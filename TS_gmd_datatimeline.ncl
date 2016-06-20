@@ -98,7 +98,7 @@ printVarSummary(plot_data)
 ;    asciiwrite("./data_availability_timeline.txt",transpose(plot_data))
 ;;*******************************************************
 ;;---Plotting
-    plot_type ="x11"
+    plot_type ="pdf"
     plot_name = "GMD_station_timeline"
 
 ;    plot_time = obs_time
@@ -138,7 +138,10 @@ printVarSummary(plot_data)
     res@vpWidthF    = 0.75
     res@vpHeightF   = 0.4
 
-    res@xyMarkLineMode = "Lines"
+    res@xyMarkLineMode = "Markers"
+    Marker_style = new (140,integer)
+    Marker_style(:) = 16
+    res@xyMarkers      = Marker_style
     res@xyDashPatterns = 0
     Line_color = new (140,"string")
     Line_color(:) = "blue"
