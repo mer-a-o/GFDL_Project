@@ -1,6 +1,6 @@
 ;_________________________________________________________________________
 ; Purpose: 
-;      This is the first test scripts
+;      Individual TS  plots of GMD monthly average and 2 model outputs
 ;
 ; Modification History
 ;      Created on June-2016, MAO
@@ -38,10 +38,10 @@ begin
   modeldir_emis     = "/Users/mabdioskouei/GFDL_METHANE/model_output/ch4emis/"
   workdir           = "./"
   station_file      = workdir+"gmd_station_list.csv"
-  run_mode = "conc"
-;  run_mode = "emis"
+;  run_mode = "conc"
+  run_mode = "emis"
 
-  plot_years = ispan(2001,2011,1)
+  plot_years = ispan(2001,2005,1)
 
   if (run_mode.eq."conc")then
       modeldir = modeldir_conc
@@ -64,6 +64,7 @@ begin
   nsites       = dimsizes(stationcode)
   stationstring = stationcode+","+stationname+","+sprintf("%4.1f",stationlat)+","+sprintf("%5.1f",stationlonforplot)+","+sprintf("%5.1f",stationalt)+"m"
 
+;print (stationlat+","+stationlon)
 ;;---Subset of sites
   ssites = (/"alt","zep","sum","brw","pal","ice",    \  
              "cba","mhd","shm","oxk","hpb","hun",    \  
@@ -79,11 +80,28 @@ begin
        
    nssites = dimsizes(ssites) 
    print("Number of stations to plot = "+nssites)
-  site_indices = get1Dindex(stationcode,str_upper(ssites))
+   site_indices = get1Dindex(stationcode,str_upper(ssites))
 
 
   do sp=0, nspecies-1
     xsp = species(sp)
+
+;;---Read Static file
+    staticfile = "/Users/mabdioskouei/GFDL_METHANE/model_output/tracer_level.static.nc"
+    static = addfile(staticfile,"r")
+    mod_lat = static->lat
+    mod_lon = static->lon
+    bk = static->bk
+    pk = static->pk
+    npedge = dimsizes(static->phalf)
+    npfull = npedge - 1
+print ("NPFULL ="+npfull) 
+;;---Read Pressure file
+    pressfils = systemfunc("ls "+modeldir+"tracer_level.*.ps.nc")
+    pressfin = addfiles(pressfils,"r")
+    ListSetType (pressfin,"cat")
+    modelps = pressfin[:]->ps 
+        
 ;;---Read model output
     simfils = systemfunc("ls "+modeldir+"tracer_level.*."+str_upper(xsp)+".nc")  ;Model output
     simfils_sphum = systemfunc("ls "+modeldir+"tracer_level*.sphum.nc") 
@@ -92,37 +110,54 @@ begin
     simfin_sphum = addfiles(simfils_sphum,"r")
     ListSetType(simfin_sphum, "cat")
 
-    pfull = simfin[0]->pfull
-    sfclev = dimsizes(pfull) - 1
-    sfcpfull = pfull(sfclev)
- 
+    model_conc := simfin[:]->$str_upper(xsp)$
+    modelconc := 1.0e9 * model_conc  ; convert to ppb
+    model_sphum := simfin_sphum[:]->sphum
+
+    model_lat := simfin[0]->lat
+    model_lon := simfin[0]->lon
+
     time = simfin[:]->time
     utc_date = cd_calendar(time,0)
     myear = tointeger(utc_date(:,0))
     delete(utc_date)
-    model_conc = simfin[:]->$str_upper(xsp)$(:,sfclev,:,:)
-    model_conc_3d = simfin[:]->$str_upper(xsp)$
-; printVarSummary (model_conc_3d)  ;; (time,pfull,lat,lon)
-    model_sphum = simfin_sphum[:]->sphum(:,sfclev,:,:)
-    dry_model_conc = 1000000000*(model_conc/(1-(model_sphum/(mw_h2o/mw_air))))  ; mw_h2o/mw_air = 0.622 this converts model X to per mole of dry air
-    dry_model_conc!0 = "time"
-    dry_model_conc!1 = "lat"
-    dry_model_conc!2 = "lon"
-    dry_model_conc&time = time
-    dry_model_conc&lat = model_conc&lat
-    dry_model_conc&lon = model_conc&lon
-;printVarSummary (model_conc)
-    model_lat = simfin[0]->lat
-    model_lon = simfin[0]->lon
-; Bilinear interpolation of model results at station lat and lon; need to interpolate altitude
+
+    time = simfin[:]->time
+    utc_date = cd_calendar(time,0)
+    myear = tointeger(utc_date(:,0))
+    delete(utc_date)
+
+    phalf = pres_hybrid_ccm(modelps,1.,pk,bk)
+    pdel = dpres_hybrid_ccm(modelps,1.,pk,bk) ; kg/(ms2)
+    pressure = pdel/(log(phalf(:,1:npedge-1,:,:))-log(phalf(:,0:npedge-2,:,:)))  ; equivalent to pfull (Pa)
+    pressure!0 = "time"
+    pressure!1 = "pfull"
+    pressure!2 = "lat"
+    pressure!3 = "lon"
+
+    pressure = pressure/100.   ; convert to hPa
+    model_alt = (tref/lapserate) * (1.0 - (pressure/pref)^x)  ; calculate model altitude corresponding to the pressure level
+    copy_VarCoords(modelconc,model_alt)
+    time = simfin[:]->time
+    utc_date = cd_calendar(time,0)
+    myear = tointeger(utc_date(:,0))
+    delete(utc_date)
+
+
+;  Bilinear interpolation of model results at station lat and lon; need to interpolate altitude
 ; as well to derive vertical level at the site particularly if the stationlon is less than min(mod_lon).
 ; First encountered this problem when comparing against EMEP data.  
-    model_conc_atsite = linint2_points_Wrap(model_lon,model_lat,dry_model_conc,True,stationlon(site_indices),stationlat(site_indices),0)
+    model_conc_atsite = linint2_points_Wrap(model_lon,model_lat,modelconc,True,stationlon(site_indices),stationlat(site_indices),0)
     model_sphum_atsite = linint2_points_Wrap(model_lon,model_lat,model_sphum,True,stationlon(site_indices),stationlat(site_indices),0)
-    delete(model_conc)
-    delete(model_sphum)
+    modelaltatsite = linint2_points_Wrap(model_lon,model_lat,model_alt,True,stationlon(site_indices),stationlat(site_indices),0)
+printVarSummary(modelaltatsite)
+;    delete(model_conc)
+;    delete(model_sphum)
 ;    delete(time)
 printVarSummary(model_conc_atsite)
+
+
+
 ;;************************************************
 ;;---Read Obs data
 
@@ -152,6 +187,32 @@ printVarSummary(plot_obs_conc)
 ;printVarSummary (plot_obs_conc)
 
 ;;************************************************
+;;----Get model value at correct vertical layer
+    model_conc_site_alt = new ((/nssites,dimsizes(myear)/),float)
+    model_conc_site_alt!0 = "station"
+    model_conc_site_alt!1 = "time"
+
+; Find the pressure level nearest to station altitude - not using annual mean pressure as pressure 
+; changes from month-to-month
+print("NUM YEARS IN MODEL ="+dimsizes(myear))
+    do i_time=0,dimsizes(myear)-1
+        do i_st=0, nssites-1
+            if(isfilepresent(obsinfile(site_indices(i_st)))) then
+;print (i_time+","+i_st)
+                if (stationalt(site_indices(i_st)) .lt. modelaltatsite(i_time, npfull-1,i_st)) then 
+                    ilev = npfull-1
+                else
+                    ilev = ind_nearest_coord(stationalt(site_indices(i_st)),modelaltatsite(i_time,:,i_st),0)   ; get model altitude
+                end if
+                model_conc_site_alt(i_st,i_time) = (/model_conc_atsite(i_time,ilev,i_st)/(1-(model_sphum_atsite(i_time,ilev,i_st)/(mw_h2o/mw_air)))/)
+            else
+                model_conc_site_alt(i_st,i_time) = -999.9
+
+            end if 
+        end do ;;i_st
+    end do ;;i_time
+    model_conc_site_alt@_FillValue = -999.9
+
 ;---Plotting
 
     plot_type = "x11"
@@ -160,19 +221,23 @@ printVarSummary(plot_obs_conc)
     plot_time = time
     copy_VarAtts(time,plot_time)
 printVarSummary(plot_data)
+
+    plot_name = "plots/"+run_mode+"/"+xsp+"_TS_gmd_"+stationcode(site_indices)+"_model_"+run_mode
+
     do ind_stn = 0, nssites-1 
-      plot_name = "plots/"+run_mode+"/"+xsp+"_TS_gmd_"+stationcode(ind_stn)+"_model_"+run_mode
-      plot_data (0,:) = model_conc_atsite (:,ind_stn)
+      plot_data (0,:) = model_conc_site_alt (ind_stn,:)
       plot_data (1,:) = plot_obs_conc (:,ind_stn)
-    
+;print (plot_obs_conc(:,ind_stn)) 
       plot = new(nssites, graphic)
 ;;------Map resourses
-      wks  = gsn_open_wks (plot_type,plot_name)
+      wks  = gsn_open_wks (plot_type,plot_name(ind_stn))
       res  = True
       res@gsnMaximize = True
       res@gsnPaperOrientation = "portrait" 
       res@gsnCenterString = stationstring(site_indices(ind_stn))
-print (stationstring(site_indices(ind_stn)))
+      res@gsnStringFontHeightF = 0.01
+
+;print (stationstring(site_indices(ind_stn)))
 ;;-----Y Axis
       res@trYMinF  =  1350
       res@trYMaxF  =  2000
@@ -188,20 +253,34 @@ print (stationstring(site_indices(ind_stn)))
       res@vpWidthF    = 0.45
       res@vpHeightF   = 0.25
 
-      res@xyMarkLineMode   = "MarkLines"               ; choose which have markers
+;      res@xyMarkLineMode   = "MarkLines"               ; choose which have markers
+      res@xyMarkLineMode   = "Lines"               ; choose which have markers
+
       res@xyMarkers         =  (/16,7/)                      ; choose type of marker  
       res@xyMarkerColors    = (/"black","red"/)   ; Marker color
       res@xyMarkerSizeF     = 0.005                     ; Marker size (default 0.01)
       res@xyMarkerThicknessF = 1.5
+      res@xyLineThicknesses  = (/4,4/)
       res@xyLineColors      = (/"black","red"/)            
       res@xyDashPattern     = 0.
+;;-----Legends
+      res@pmLegendDisplayMode    = "Always"              ; turn on legend
+      res@pmLegendSide           = "Bottom"                 ; Change location of  
 
-      restick = True
+      res@pmLegendWidthF         = 0.06                  ; Change width and
+      res@pmLegendHeightF        = 0.045                  ; height of legend.
+      res@lgLabelFontHeightF     = .008                   ; change font height
+      res@lgPerimOn              = False                 ; no box around     restick = True
+      res@xyExplicitLegendLabels = (/"ch4"+run_mode, "Obs GMD"/) 
+
+
+;;-----X Axis Time Format
+      restick  = True
       restick@ttmFormat = "%Y" 
 ;      restick@ttmNumTicks = 5
       restick@ttmMajorStride = 12  ;Number of timesteps desired between major tickmarks
       time_axis_labels (plot_time,res,restick)
-      res@tmXBLabelFontHeightF  = 0.01
+      res@tmXBLabelFontHeightF  = 0.008
 
 ;      plot_single = gsn_csm_xy (wks, plot_time,plot_data,res)
       plot = gsn_csm_xy (wks, plot_time,plot_data,res)
