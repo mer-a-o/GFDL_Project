@@ -152,12 +152,6 @@ rpanel@gsnPanelBottom = 0.02
 rpanel@gsnPanelTop = 0.95
 res@gsnStringFontHeightF   = 0.02
 
-; Settings for counter
-txres               = True                     ; text mods desired
-txres@txFontHeightF = 0.017                     ; font smaller. default big
-txres@txJust = "CenterLeft"
-txres@txFontColor = "blue"
-
 ; Setting for additional text
 amres = True
 amres@txFontHeightF = 0.009   
@@ -239,14 +233,15 @@ else
 end if
 
 ;staticfile = "/archive/"+user+version+experiment+platform+"pp/tracer_level/tracer_level.static.nc"
+staticfile = "/Users/mabdioskouei/GFDL_METHANE/model_output/tracer_level.static.nc"
 
-;static = addfile(staticfile,"r")
-;mod_lat = static->lat
-;mod_lon = static->lon
-;bk = static->bk
-;pk = static->pk
-;npedge = dimsizes(static->phalf)
-;npfull = npedge - 1 
+static = addfile(staticfile,"r")
+mod_lat = static->lat
+mod_lon = static->lon
+bk = static->bk
+pk = static->pk
+npedge = dimsizes(static->phalf)
+npfull = npedge - 1 
 
 ;avg_freq = "30yr"
 ;modeldir = "/archive/"+user+version+experiment+platform+"pp/tracer_level/av/monthly_"+avg_freq+"/"
@@ -261,47 +256,44 @@ sfclev := dimsizes(pfull)-1
 sfcpfull := pfull(sfclev)
 
 time := fin[:]->time
-modelconc := fin[:]->$str_upper(xsp)$(:,sfclev,:,:)
+modelconc := fin[:]->$str_upper(xsp)$
 ;modelconc = 1.0e9 * modelconc  ; convert to ppb
 modlon := fin[0]->lon
 modlat := fin[0]->lat
 modelps := fin[:]->ps
 
-modelsphum := fin[:]->sphum(:,sfclev,:,:)
-
-dry_model_conc := 1000000000*(modelconc/(1-(modelsphum/(mw_h2o/mw_air))))  ; mw_h2o/mw_air = 0.622 this converts model X to per mole of dry air
-dry_model_conc!0 = "time"
-dry_model_conc!1 = "lat"
-dry_model_conc!2 = "lon"
-dry_model_conc&time = time
-dry_model_conc&lat = modelconc&lat
-dry_model_conc&lon = modelconc&lon
+modelsphum := fin[:]->sphum
 
 delete(fin)
 
-;phalf = pres_hybrid_ccm(modelps,1.,pk,bk)
-;pdel = dpres_hybrid_ccm(modelps,1.,pk,bk) ; kg/(ms2)
-;pressure = pdel/(log(phalf(:,1:npedge-1,:,:))-log(phalf(:,0:npedge-2,:,:)))  ; equivalent to pfull (Pa)
-;pressure!0 = "time"
-;pressure!1 = "pfull"
-;pressure!2 = "lat"
-;pressure!3 = "lon"
+phalf = pres_hybrid_ccm(modelps,1.,pk,bk)
+pdel = dpres_hybrid_ccm(modelps,1.,pk,bk) ; kg/(ms2)
+pressure = pdel/(log(phalf(:,1:npedge-1,:,:))-log(phalf(:,0:npedge-2,:,:)))  ; equivalent to pfull (Pa)
+pressure!0 = "time"
+pressure!1 = "pfull"
+pressure!2 = "lat"
+pressure!3 = "lon"
 
-;pressure = pressure/100.   ; convert to hPa
-;model_alt = (tref/lapserate) * (1.0 - (pressure/pref)^x)  ; calculate model altitude corresponding to the pressure level
-;copy_VarCoords(modelconc,model_alt)
+pressure = pressure/100.   ; convert to hPa
+model_alt = (tref/lapserate) * (1.0 - (pressure/pref)^x)  ; calculate model altitude corresponding to the pressure level
+
+printVarSummary(model_alt)
+printVarSummary(modelconc)
+
+copy_VarCoords(modelconc,model_alt)
 
 ; Bilinear interpolation of model results at station lat and lon; need to interpolate altitude
 ; as well to derive vertical level at the site particularly if the stationlon is less than min(mod_lon).
 ; First encountered this problem when comparing against EMEP data.  
-modelconcatsite := linint2_points_Wrap(modlon,modlat,dry_model_conc,True,stationlon(site_indices),stationlat(site_indices),0)
-;modelaltatsite = linint2_points_Wrap(modlon,modlat,model_alt,True,stationlon(site_indices),stationlat(site_indices),0)
+modelconcatsite := linint2_points_Wrap(modlon,modlat,modelconc,True,stationlon(site_indices),stationlat(site_indices),0) ;;[time x pfull x stn]
+modelaltatsite = linint2_points_Wrap(modlon,modlat,model_alt,True,stationlon(site_indices),stationlat(site_indices),0)
 modelsphumatsite := linint2_points_Wrap(modlon,modlat,modelsphum,True,stationlon(site_indices),stationlat(site_indices),0)
+
 ;printVarSummary(modelconcatsite)
 
-;modconcatsite = new((/nssites,12/),float)
+modconcatsite = new((/nssites,12/),float)
 
-modconcatsite := transpose (modelconcatsite)
+
 modconcatsite!0 = "station"
 modconcatsite!1 = "time"
 printVarSummary(modconcatsite)
@@ -309,25 +301,25 @@ printVarSummary(modconcatsite)
 
 ; Find the pressure level nearest to station altitude - not using annual mean pressure as pressure 
 ; changes from month-to-month
-;do m = 0, 11 
-;  do st = 0, nssites - 2
-;    if (isfilepresent(infile(site_indices(st)))) then 
-;      if (stationalt(site_indices(st)) .lt. modelaltatsite(m, npfull-1,st)) then 
-;        ilev = npfull - 1 
-;      else 
-;        ilev = ind_nearest_coord(stationalt(site_indices(st)),modelaltatsite(m,:,st),0)   ; get model altitude nearest to the station altitude
-;      end if
+do m = 0, 11 
+  do st = 0, nssites - 2
+    if (isfilepresent(infile(site_indices(st)))) then 
+      if (stationalt(site_indices(st)) .lt. modelaltatsite(m, npfull-1,st)) then 
+        ilev = npfull - 1 
+      else 
+        ilev = ind_nearest_coord(stationalt(site_indices(st)),modelaltatsite(m,:,st),0)   ; get model altitude nearest to the station altitude
+      end if
 ;      print(" "+stationcode(site_indices(st))+" "+ilev+" ")
-;      if (st .eq. nsites-1) then
-;       print(" "+ilev +" "+ssiteid(nsites-1))
-;      end if
-;      modconcatsite(st,m) = (/modelconcatsite(m,ilev,st)/(1-(modelsphumatsite(m,ilev,st)/(mw_h2o/mw_air)))/)
-;    else
-;      modconcatsite(st,m) = -999.9
-;    end if 
-;  end do  ; sites
-;end do
-;modconcatsite@_FillValue = -999.9
+      if (st .eq. nsites-1) then
+       print(" "+ilev +" "+ssiteid(nsites-1))
+      end if
+      modconcatsite(st,m) = 1000000000*(/modelconcatsite(m,ilev,st)/(1-(modelsphumatsite(m,ilev,st)/(mw_h2o/mw_air)))/)
+    else
+      modconcatsite(st,m) = -999.9
+    end if 
+  end do  ; sites
+end do
+modconcatsite@_FillValue = -999.9
 
 ; Calculate comparison statistics
 ;**********************************
@@ -340,8 +332,9 @@ meanbias(i_mode,:) = dim_avg(modconcatsite(station|:,time|:)) - dim_avg(climocon
 
 correlation(i_mode,:) = escorc(modconcatsite(station|:,time|:),climoconc(station|:,time|:))
 ;print(" "+correlation)
-printVarSummary( plotvar(i_mode,:,:))
-printVarSummary (modconcatsite)
+;printVarSummary( plotvar(i_mode,:,:))
+;printVarSummary (modconcatsite)
+
 plotvar(i_mode,:,:) = modconcatsite
 end do ;;i_mode 
 
@@ -352,13 +345,18 @@ plot_name = xsp+"_climo_gmd_"+run_mode
 wks = gsn_open_wks(plot_type,plot_name)
 plotvar(i_mode,:,:) = climoconc
 
+;print(plotvar)
 ;print(modconcatsite)
 plot = new(nssites,"graphic")
 imons = ispan(0,11,1)
 mons = (/"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"/)
 nmons = dimsizes(mons)
 
-
+; Settings for counter
+txres               = True                     ; text mods desired
+txres@txFontHeightF = 0.017                     ; font smaller. default big
+txres@txJust = "CenterLeft"
+txres@txFontColor = "blue"
 
 do st = 0, nssites - 2   
   if (xsp .eq. "co") then
@@ -367,21 +365,38 @@ do st = 0, nssites - 2
     yposn = (/10,10,10,10,10,10,10,10,10,10,10,10/)
   else if (run_mode.eq."conc") 
     posn = 1650
-    res@trYMinF = 1600.
-    yposn = (/1610,1610,1610,1610,1610,1610,1610,1610,1610,1610,1610,1610/)
+    res@trYMinF = 1300.
+    yposn_conc = (/1310,1310,1310,1310,1310,1310,1310,1310,1310,1310,1310,1310/)
   else 
     posn = 1350
     res@trYMinF = 1300.
-    yposn = (/1310,1310,1310,1310,1310,1310,1310,1310,1310,1310,1310,1310/)
+    yposn = new (12,integer)
+    yposn(:) = 1310
+    yposn_conc = new (12,integer)
+    yposn_conc = 1360
+    yposn_emis = new (12,integer)
+    yposn_emis = 1410
+    
   end if 
   end if
 ;  res@trYMaxF = max(plotvar(:,st,:))+20.0
   res@trYMaxF = 2000 
+  txres@txFontColor = "blue"
   res@gsnCenterString = stationstring(site_indices(st))
   plot(st) = gsn_csm_xy(wks,imons,plotvar(:,st,:), res)
+
   cttext = gsn_add_text(wks,plot(st),sprinti("%2.0i",datacounter(st,:)),imons,yposn,txres)
-  stats = "Mean bias="+sprintf("%4.1f",meanbias(0,st))+"ppb, r="+sprintf("%4.2f",correlation(0,st))
-  stattext = gsn_add_text(wks,plot(st),stats,0.5,posn,txres)
+
+  txres@txFontColor = "red"
+  stats_conc = "Mean bias (conc)="+sprintf("%4.1f",meanbias(0,st))+"ppb, r="+sprintf("%4.2f",correlation(0,st))
+  stattext = gsn_add_text(wks,plot(st),stats_conc,0.5,yposn_conc,txres)
+
+  txres@txFontColor = "chartreuse3"
+  stats_emis = "Mean bias(emis)="+sprintf("%4.1f",meanbias(1,st))+"ppb, r="+sprintf("%4.2f",correlation(1,st))
+  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis,txres)
+
+
+
 end do
 
 rpanel@txString = "1988-2012 Climo GMD vs. "+experiment
