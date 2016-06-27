@@ -63,20 +63,21 @@ nsites       = dimsizes(stationcode)
 stationlonforplot = stationlon
 ;stationlon   = where(stationlon.lt.0, stationlon+360., stationlon)
 stationstring = stationcode+","+stationname+","+sprintf("%4.1f",stationlat)+","+sprintf("%5.1f",stationlonforplot)+","+sprintf("%5.1f",stationalt)+"m"
-print (stationlat)
 ; Subset of sites
 ; Consider the following sites for climatological comparison
-ssites = (/"alt","zep","sum","brw","pal","ice",    \  
-           "cba","mhd","shm","oxk","hpb","hun",    \  
-	   "uum","thd","nwr","uta","azr",     \  
-           "tap","sgp","wlg","lmp","bmw","pocn30", \  
-	   "wis","izo","mid","key","pocn25","lln",   \
-	   "ask","pocn20","mlo","kum","pocn15",   \    
-	   "gmi","rpb","pocn10","pocn05","chr","bkt",   \    
-	   "sey","pocs05","nat","asc","pocs10",        \   
-           "smo","pocs15","pocs20","nmb","pocs25",   \   
-           "eic","pocs30","cpt","cgo","bhd","crz",   \   
-	   "psa","syo","hba"/)                           
+;ssites = (/"alt","zep","sum","brw","pal","ice",    \  
+;           "cba","mhd","shm","oxk","hpb","hun",    \  
+;	   "uum","thd","nwr","uta","azr",     \  
+;           "tap","sgp","wlg","lmp","bmw","pocn30", \  
+;	   "wis","izo","mid","key","pocn25","lln",   \
+;	   "ask","pocn20","mlo","kum","pocn15",   \    
+;	   "gmi","rpb","pocn10","pocn05","chr","bkt",   \    
+;	   "sey","pocs05","nat","asc","pocs10",        \   
+;           "smo","pocs15","pocs20","nmb","pocs25",   \   
+;           "eic","pocs30","cpt","cgo","bhd","crz",   \   
+;	   "psa","syo","hba"/)                           
+
+ssites = stationcode
 nssites = dimsizes(ssites) 
 site_indices = get1Dindex(stationcode,str_upper(ssites))
 
@@ -93,6 +94,8 @@ do sp = 0, nspecies - 1
 res   = True
 res@gsnDraw = False
 res@gsnFrame = False
+res@gsnMaximize = True
+res@gsnPaperOrientation = "landscape"
 
 ; X axis
 res@trXMinF       = imons(0)
@@ -149,6 +152,7 @@ rpanel = True
 rpanel@txFontHeightF = 0.015
 rpanel@gsnFrame = False				   ; required for panel plots
 rpanel@gsnMaximize = True
+rpanel@gsnPaperOrientation = "landscape"
 rpanel@gsnPanelLabelBar = False
 rpanel@gsnPanelBottom = 0.02
 rpanel@gsnPanelTop = 0.95
@@ -196,7 +200,6 @@ do i = 0, 11
   ct(i) = num(.not.ismissing(obsconc(:,i)))
 end do
 
-print (obsconc)
 ;*********************************************************************
 ; Model data info - use climatological average files
 ;***************************************************
@@ -214,7 +217,7 @@ user = "van"
 version    = "/awg/ulm_201505/"
 ;experiment   = "c96L48_am4g7_fullchem_lnox_rcp85"
 platform   = "/gfdl.ncrc3-intel15-prod-openmp/"
-experiment  = "test runs"
+;experiment  = "test runs"
 
 do i_mode = 1,1  ;;conc and emis mode 
     
@@ -268,7 +271,6 @@ dry_model_conc&time = time
 dry_model_conc&lat = model_conc&lat
 dry_model_conc&lon = model_conc&lon
 
-print (dry_model_conc(0,15:20,0:2))
 
 ; Calculate comparison statistics
 ;**********************************
