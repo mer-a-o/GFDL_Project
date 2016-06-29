@@ -17,11 +17,14 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/contrib/time_axis_labels.ncl"
 ;**********************************************************************
 
 begin
-    mission_name = "FRAPPE-2014"
+;    mission_name = "FRAPPE-2014"
 ;    mission_name = "CALIFORNIA-2013"
+;    mission_name = "BALTIMORE-2011"
+    mission_name = "SEAC4RS-2013"
     data_dir    = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/DISCOVERAQ/"+mission_name+"/"
-    var_name    = "CH4_MixingRatio"
-;    var_name = "Methane_mixing_ratio"
+;    var_name    = "CH4_MixingRatio"
+;    var_name = "Methane_mixing_ratio"i
+    var_name = "CH4_WAS"
 
 
 ;;---Read Flight data 
@@ -34,12 +37,13 @@ begin
     flight_lon = flight_file->LONGITUDE
     flight_alt = 1000*(flight_file->ALTP)  ;km to m
     flight_press = flight_file->PRESSURE
-    flight_var = flight_file->$var_name$
+;    flight_var = flight_file->$var_name$
+    flight_var = 1000*(flight_file->$var_name$) ;;SEAC4RS is in ppm
     num_data = dimsizes(flight_lat)     ;;# data points
 ;print (flight_var)
-    print(ind(flight_var.lt.0))
-    flight_var(ind(flight_var.lt.0)) = -9999999 ;;covers different missing values or bugs in datasets 
-
+    if (any(flight_var.lt.0)) then
+        flight_var(ind(flight_var.lt.0)) = -9999999 ;;covers different missing values or bugs in datasets
+    end if
 
 printVarSummary(flight_var)
 ;;---Alt  binning
@@ -94,7 +98,7 @@ print (min(bin_var(:,0)))
 ;;---------------------------------------------
 ;; Plotting
 ;;---------------------------------------------
-    plot_type = "x11"
+    plot_type = "pdf"
     plot_name = "Alt_Ch4_testruns_"+mission_name
     wks = gsn_open_wks(plot_type,plot_name)
     res     = True
@@ -114,7 +118,7 @@ print (min(bin_var(:,0)))
 
 ;;---Y Axis
     res@trYMinF = -0.5
-    res@trYMaxF = 8
+    res@trYMaxF = 13
     res@tiYAxisString = "Alt (km)"
     res@tiYAxisFontHeightF = 0.02  
     res@tmYLLabelFontHeightF = 0.02
