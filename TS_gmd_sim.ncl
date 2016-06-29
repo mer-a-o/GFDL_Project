@@ -1,6 +1,6 @@
 ;_________________________________________________________________________
 ; Purpose: 
-;      Panel  TS  plots of GMD monthly average and 2 model outputs
+;      Panel  TS  plots of GMD(all stations) monthly average and 2 model outputs
 ;
 ; Modification History
 ;      Created on June-2016, MAO
@@ -227,7 +227,7 @@ print("MODE ="+ i_mode+ "msx"+max(year_mon_ind_model))
 ;;******************************************************************
 ;---Plotting
 ;;******************************************************************
-    plot_type = "pdf"
+    plot_type = "x11"
 ;    plot_name = xsp+"_TS_gmd_TestModel"
     plot_time = time(min(year_mon_ind_model):max(year_mon_ind_model)+11)
 
@@ -239,7 +239,9 @@ printVarSummary(plot_data)
 ;-----Create legend
       lgres                    = True
       lgres@vpWidthF           = 0.15                   ; width of legend (NDC)
-      lgres@vpHeightF          = 0.03                   ; height of legend (NDC)
+      lgres@vpHeightF          = 0.05                   ; height of legend (NDC)
+      lgres@vpXF               = 0.01
+      lgres@vpYF               = 0.05
       lgres@lgPerimOn          = False                 ; turn off perimeter
       lgres@lgMarkerIndexes    = (/7,6,16/)              ; dash indexes
       lgres@lgItemType         = "MarkLines"
@@ -269,9 +271,10 @@ printVarSummary(plot_data)
           res@gsnCenterString = stationstring(site_indices(ind_stn))
           res@gsnStringFontHeightF = 0.015
 
-
+          res@gsnFrame  = False
+          res@gsnDraw   = False
 ;;-----For layout
-          res@vpWidthF    = 1
+          res@vpWidthF    = 0.75
           res@vpHeightF   = 0.25
           ;res@vpXF        = 0.03
           ;res@vpYF        = 
@@ -312,12 +315,14 @@ printVarSummary(plot_data)
 ;        end if
 
     end do ;;ind_st
+
     begx = 0
     do i_p=0,nssites/3-1
         endx = begx+2
         gsn_panel(wks,pplot(begx:endx),(/3,1/),rpanel)
         gsn_legend_ndc(wks,3,(/"conc","emis","GMD"/),0.5,0.03,lgres)
         frame(wks)
+        begx = endx+1
     end do ;;i_p
     gsn_panel(wks,pplot(endx+1:nssites-1),(/3,1/),rpanel)
     gsn_legend_ndc(wks,3,(/"conc","emis","GMD"/),0.5,0.03,lgres)
