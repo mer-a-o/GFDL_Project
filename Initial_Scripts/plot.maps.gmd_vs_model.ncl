@@ -31,6 +31,7 @@ nspecies = dimsizes(species)
 ; Specify directories
 datadir = "/net2/van/obs_data/GMD/"
 workdir = "/net/van/obs_data/surface_gmd/"
+
 station_file = workdir+"gmd_station_list.csv"
 
 ; Read stationinfo

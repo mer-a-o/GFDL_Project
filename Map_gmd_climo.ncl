@@ -48,8 +48,8 @@ workdir           = "./"
 
 station_file = workdir+"gmd_station_list.csv"
 
-; run_mode = "conc"
-  run_mode = "emis"
+ run_mode = "conc"
+;  run_mode = "emis"
 
 ; Read stationinfo
 station_info = getgmdstationinfo(station_file)
@@ -219,7 +219,7 @@ version    = "/awg/ulm_201505/"
 platform   = "/gfdl.ncrc3-intel15-prod-openmp/"
 ;experiment  = "test runs"
 
-do i_mode = 1,1  ;;conc and emis mode 
+do i_mode = 0,0  ;;conc and emis mode 
     
 if (i_mode.eq.0)then
   modeldir = modeldir_conc

@@ -40,8 +40,8 @@ nspecies = dimsizes(species)
 ;workdir = "/net/van/obs_data/surface_gmd/"
 datadir_climo = "/Users/mabdioskouei/GFDL_METHANE/obs_data/climatology_1988_2012/"
 obsdir_gmd        = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ncdf/"
-modeldir_conc     = "/Users/mabdioskouei/GFDL_METHANE/model_output/ch4conc/monthly_10yraverage/"
-modeldir_emis     = "/Users/mabdioskouei/GFDL_METHANE/model_output/ch4emis/monthly_5yraverage/"
+modeldir_conc = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4conc/"
+modeldir_emis = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4emis/"
 workdir           = "./"
 
 station_file = workdir+"gmd_station_list.csv"
@@ -233,7 +233,7 @@ else
 end if
 
 ;staticfile = "/archive/"+user+version+experiment+platform+"pp/tracer_level/tracer_level.static.nc"
-staticfile = "/Users/mabdioskouei/GFDL_METHANE/model_output/tracer_level.static.nc"
+staticfile = modeldir+"tracer_level.static.nc"
 
 static = addfile(staticfile,"r")
 mod_lat = static->lat
@@ -340,7 +340,7 @@ end do ;;i_mode
 
 ; Plot Obs-Model comparisons  - Seasonal cycle at individual sites (ssites)
 ;****************************
-plot_type = "x11"
+plot_type = "pdf"
 plot_name = xsp+"_climo_gmd_"+run_mode
 wks = gsn_open_wks(plot_type,plot_name)
 plotvar(i_mode,:,:) = climoconc

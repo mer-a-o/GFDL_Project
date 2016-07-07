@@ -61,7 +61,10 @@ print (max(alt_ind))
     bin_var@_FillValue = -9999999
     err_bar = new ((/num_bins,2/),float)
     counter_data_arr = new (num_bins,float) ;;How many data in each bin
-;;-------
+    bin_lat = new ((/num_data,num_bins/),float)
+    
+    bin_lon = new ((/num_data,num_bins/),float)
+ ;;-------
     do i_bin = 0,num_bins-1
         counter_data := 0
         do j_data = 0, num_data-1

@@ -35,9 +35,6 @@ begin
     data_dir = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/HIPPO/"
     
     var_name    = "CH4_MixingRatio"
-;    var_name = "Methane_mixing_ratio"
-;    var_name = "CH4_WAS"
-
 
 ;;---Read Flight data 
     ;fils = systemfunc("ls "+data_dir+"*.convert.nc")

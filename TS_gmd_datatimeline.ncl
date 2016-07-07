@@ -85,12 +85,13 @@ begin
     site_avail_index = ind(isfilepresent(obsinfile))
     num_site_avail = dimsizes(site_avail_index)
     print("data available for "+num_site_avail+ " stations")
-    plot_data = new ((/nyears*12,nssites/),integer)
-
+    plot_data = new ((/nyears,nssites/),integer)
+printVarSummary(obs_conc)
 printVarSummary(plot_data)
     do ii_st = 0, nssites-1
-        do jj_yr = 0,nyears*12-1
-            if (.not.ismissing(obs_conc(jj_yr,ii_st))) then
+        do jj_yr = 0,nyears-1
+            ;print(.not.all(ismissing(obs_conc(jj_yr*12:jj_yr*12+11,ii_st))))
+            if (.not.all(ismissing(obs_conc(jj_yr*12:jj_yr*12+11,ii_st)))) then
                 plot_data (jj_yr,ii_st) = ii_st
             end if
         end do ;;jj_year
@@ -105,8 +106,8 @@ printVarSummary(plot_data)
 ;    plot_time@units = "YYYYMM"
 ;print (plot_time) 
 
-    plot_time = ispan(1,dimsizes(obs_time),1)
-    plot_time@units = "months since 1983-01-01 00:00:00"
+    plot_time = ispan(1,nyears,1)
+    plot_time@units = "years since 1983-01-01 00:00:00"
 
 ;;---Plot Resources
     wks  =  gsn_open_wks (plot_type,plot_name)
@@ -120,15 +121,26 @@ printVarSummary(plot_data)
     res@gsnPaperOrientation  =  "landscape"
     ;res@gsnDraw     = False
     ;res@gsnFrame    = False
+    res@tiMainString   =  "GMD Station Data Availability"
+    res@tiMainFontHeightF  = 0.02
+
 ;;---Y Axis
+
+    res@tmYLMode  = "Explicit"
+    res@tmYLValues = ispan(0,nssites-1,1)
+    res@tmYLLabels = stationcode
+;    res@tmYLLabelConstantSpacingF  = 0
+;    res@tmYLMinLabelSpacingF = 0.2
+    res@tmYLLabelFontHeightF = 0.01
     res@tiYAxisFontHeightF = 0.015  
-    res@tmYLLabelFontHeightF = 0.015
+;    res@tmYLTickSpacingF= 5
+;    res@tmYLMinorPerMajor = 3
 
     res@tmYROn               = False    ; Turn on right tickmarks
     res@tmXTOn               = False   ; Turn off top tickmarks
-    res@tmYRMinorOn          = False   ; Turn off minor ticks on Y axis
-    res@trYMinF = -1
-    res@trYMaxF = 140
+    res@tmYLMinorOn          = False   ; Turn off minor ticks on Y axis
+;    res@trYMinF = -1
+;    res@trYMaxF = 141
 ;;---X Axis
     restick  =  True
     time_axis_labels (plot_time, res, restick)
@@ -136,22 +148,22 @@ printVarSummary(plot_data)
 
     ;;-----For layout
     res@vpWidthF    = 0.75
-    res@vpHeightF   = 0.4
+    res@vpHeightF   = 0.8
 
     res@xyMarkLineMode = "Markers"
-    Marker_style = new (140,integer)
+    Marker_style = new (141,integer)
     Marker_style(:) = 16
     res@xyMarkers      = Marker_style
-    res@xyDashPatterns = 0
-    Line_color = new (140,"string")
-    Line_color(:) = "blue"
-    res@xyLineColors  = Line_color     
-    Line_thickness = new (140,integer)
-    Line_thickness = 3
-    
-    res@xyLineThicknesses  =  Line_thickness   
+;    res@xyDashPatterns = 16
+    res@xyMarkerSizeF  = 0.008
+;    Line_color = new (141,"string")
+;    Line_color(:) = "blue"
+;    res@xyLineColors  = Line_color     
+;    Line_thickness = new (141,integer)
+;    Line_thickness = 3   
+;    res@xyLineThicknesses  =  Line_thickness   
 
-    plot = gsn_csm_xy (wks, plot_time,transpose(plot_data),res)
+    plot = gsn_csm_xy (wks, plot_time,transpose(plot_data(:,:)),res)
 
   end do ;;i_sp
   
