@@ -1,0 +1,156 @@
+
+;purpose: 
+;   Plot Height(Y-Axis) vs. CH4 conc obsereved by flight 
+;   Flight data must be in NetCDF format
+;
+; Modification History
+;      Created on June-2016, MAO
+;_________________________________________________________________________
+
+
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_code.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/gsn_csm.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/contributed.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/csm/shea_util.ncl"
+load "$NCARG_ROOT/lib/ncarg/nclscripts/contrib/time_axis_labels.ncl"
+
+;**********************************************************************
+
+begin
+;    mission_name = "FRAPPE-2014"
+;    mission_name = "CALIFORNIA-2013"
+;    mission_name = "BALTIMORE-2011"
+;    mission_name = "SEAC4RS-2013"
+    mission_name = "HIPPO"
+    h_year = "2009"
+    data_dir    = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/"+mission_name+"/"
+    var_name    = "CH4_MixingRatio"
+;    var_name = "Methane_mixing_ratio"i
+;    var_name = "CH4_WAS"
+
+
+;;---Read Flight data 
+    fils = systemfunc("ls "+data_dir+"*2009.nc")
+    flight_file = addfile(fils, "r")   
+    time_unit = flight_file->time
+    flight_time  = flight_file->UTC ;; time_unit is the unit
+    copy_VarAtts (time_unit,flight_time)
+    flight_lat = flight_file->LATITUDE
+    flight_lat_int_p = toint (flight_lat)
+    flight_lon = flight_file->LONGITUDE
+    flight_alt = 1000*(flight_file->ALTP)  ;km to m
+;    flight_press = flight_file->PRESSURE
+    flight_var = flight_file->$var_name$
+;    flight_var = 1000*(flight_file->$var_name$) ;;SEAC4RS is in ppm
+    num_data = dimsizes(flight_lat)     ;;# data points
+;print (flight_var)
+    if (any(flight_var.lt.0)) then
+        flight_var(ind(flight_var.lt.0)) = -9999999 ;;covers different missing values or bugs in datasets
+    end if
+
+    flight_lat_int = new(num_data,float)
+    do i_data=0,num_data-1
+        print (flight_lat(i_data)-flight_lat_int_p(i_data))
+
+        if ((flight_lat(i_data)-flight_lat_int_p(i_data)).gt.0.5.or.(flight_lat(i_data)-flight_lat_int_p(i_data)).lt.-0.5) then
+            flight_lat_int (i_data) = flight_lat_int_p(i_data)+0.5
+        else 
+            flight_lat_int (i_data) = flight_lat_int_p(i_data)
+        end if
+    end do ;;i_data
+
+print(flight_lat_int)
+printVarSummary(flight_var)
+;;---Alt  binning
+;    alt_wanted = (/1000,2000,3000,4000,5000,6000/)
+    alt_ind = round(flight_alt/1000,3)
+;    alt_ind = toint(flight_alt)
+
+    num_bins = (max(alt_ind) - min(alt_ind))+1  ;;# of bins
+    bin_val = ispan(min(alt_ind),max(alt_ind),1)
+    bin_val@Units = "km"
+    print("Number of bins = "+num_bins)
+    print("Bin Values(km) = "+bin_val)
+;    print("Bin Values(m) = "+bin_val)
+
+    ;lat_bin = ispan (-90,90,1)
+    lat_bin = fspan (-90,90,361)
+    num_lat_bins = dimsizes(lat_bin)
+
+;    mean_bin = new (num_bins,float)
+;    std_bin = new(num_bins,float)
+
+    ;bin_var = new ((/num_data,num_bins,num_lat_bins/),float)
+
+    bin_var = new ((/num_bins,num_lat_bins/),float)
+    bin_var@_FillValue = -9999999
+ ;;-------
+
+;print (flight_lat_int(get1Dindex(lat_bin,flight_lat_int)))
+;print (lat_bin)
+    do  i_lat_bin=0,num_lat_bins-1
+        do i_bin = 0,num_bins-1
+            indind := ind(flight_lat_int.lt.lat_bin(i_lat_bin).and.alt_ind.eq.bin_val(i_bin))
+    ;        print ("LAT,ALT ="+lat_bin(i_lat_bin)+","+i_bin+" ind ="+ indind)
+            if (all(ismissing(indind)))then 
+                bin_var(i_bin,i_lat_bin) = -9999999
+            else
+                bin_var(i_bin,i_lat_bin) = avg (flight_var(indind))
+            end if
+        end do ;;i_bin 
+    end do ;i_lat_bin
+    bin_var!0 = "Height"
+    bin_var&Height = bin_val
+    bin_var!1 = "latitude"
+    bin_var&latitude = lat_bin
+    bin_var@Units = "CH4 ppbv"
+
+;print(bin_var)
+;;---------------------------------------------
+;; Plotting
+;;---------------------------------------------
+    plot_type = "pdf"
+    plot_name = "Flight_track_zonal"+mission_name+"-"+h_year+"_cross_contour"
+    wks = gsn_open_wks(plot_type,plot_name)
+    colormap = "MPL_jet"
+    gsn_define_colormap (wks,colormap)
+
+    Levels = fspan (1700,1900,21) 
+;----------------------------------------------------------------------
+; Create a map plot for which to add color-coded markers.
+;----------------------------------------------------------------------
+    res                       = True
+    res@gsnMaximize = True
+    res@cnFillOn = True
+    res@cnLinesOn = False
+    res@tiMainString = mission_name+"_"+h_year
+    res@tiMainFontHeightF = 0.02
+
+;;---Contour settings
+    res@cnLevelSelectionMode = "ExplicitLevels"
+    res@cnLevels             = Levels
+
+    res@cnLineLabelsOn = False
+    res@cnInfoLabelOn  = False
+;;---Outline 
+    res@vpWidthF            = 0.7           ; change aspect ratio of plot
+    res@vpHeightF           = 0.5
+;;---Axis Setting
+    res@tiYAxisString = "Alt(km)"
+    res@tiYAxisFontHeightF = 0.02  
+    res@tmYLLabelFontHeightF = 0.02
+    res@trYMinF = 0
+    res@trYMaxF = 15
+ 
+    res@tiXAxisString = "Lat"
+    res@tiXAxisFontHeightF = 0.02  
+    res@tmXBLabelFontHeightF = 0.02
+
+
+
+    plot = gsn_csm_contour (wks,bin_var,res)
+    
+    
+    
+    ;frame(wks)
+end ;;begin
