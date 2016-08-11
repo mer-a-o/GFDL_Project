@@ -1,14 +1,12 @@
-
 ;_________________________________________________________________________
 ;purpose: 
 ;   Height (Y-Axis) vs. Latitude (X-Axis). plot flight tracjectory,
 ;   illustrates latitude of measurement
-;   One dot represents avg over alt bins (1km) and lat bins (1deg)
-;   , colored by obs CH4 concentration
+;   One dot for each measurement points, colored by obs CH4 concentration
 ;   Flight data must be in NetCDF format
 ;
 ; Modification History
-;      Created on July-2016, MAO
+;      Created on June-2016, MAO
 ;_________________________________________________________________________
 
 
@@ -21,34 +19,39 @@ load "$NCARG_ROOT/lib/ncarg/nclscripts/contrib/time_axis_labels.ncl"
 ;**********************************************************************
 
 begin
-;    mission_name = "FRAPPE-2014"
-;    mission_name = "CALIFORNIA-2013"
-;    mission_name = "BALTIMORE-2011"
+
+    mission_name = "HIPPO"
+    y_miss = "2011"
 ;    mission_name = "SEAC4RS-2013"
-    mission_name = "ARCTAS"
-;    mission_name = "HIPPO"
-;    h_year = "2010"
-    h_year = ""   
-    
-    data_dir    = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/"+mission_name+"/"
-;    data_dir    = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/DISCOVERAQ/"+mission_name+"/"
-    var_name    = "CH4_MixingRatio"
-;    var_name = "Methane_mixing_ratio"i
-;    var_name = "CH4_WAS"
+;    mission_name = "CALIFORNIA-2013"
+;    mission_name = "FRAPPE-2014"
+;    mission_name = "BALTIMORE-2011"
+;    mission_name = "ARCTAS"
+;    ARCTAS_miss = "20080401_R14_thru20080419"
+;    ARCTAS_miss = "20080618_R14_thru20080626"
+;    ARCTAS_miss = "20080629_R14_thru20080713"
 
 
-;;---Read Flight data 
-;    fils = systemfunc("ls "+data_dir+"*2010.nc")
-    fils = systemfunc("ls "+data_dir+"*.nc")
+    data_dir = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/"+mission_name+"/"
+;    data_dir = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/DISCOVERAQ/"+mission_name+"/"
+    var_name = "CH4_MixingRatio"
+
+;;---Read Flight Data
+;    fils = systemfunc("ls "+data_dir+"/ARCTAS-mrg60-dc8_merge_"+ARCTAS_miss+".convert.nc")
+;    fils = systemfunc("ls "+data_dir+"*.convert.nc")
+
+;    fils = systemfunc("ls "+data_dir+"*.convert.nc")
+    fils = systemfunc("ls "+data_dir+"*HIPPO_"+y_miss+".nc")
+
     flight_file = addfile(fils, "r")   
+
     time_unit = flight_file->time
     flight_time  = flight_file->UTC ;; time_unit is the unit
     copy_VarAtts (time_unit,flight_time)
+
     flight_lat = flight_file->LATITUDE
-    flight_lat_int = toint (flight_lat)
     flight_lon = flight_file->LONGITUDE
     flight_alt = 1000*(flight_file->ALTP)  ;km to m
-;    flight_press = flight_file->PRESSURE
     flight_var = flight_file->$var_name$
 ;    flight_var = 1000*(flight_file->$var_name$) ;;SEAC4RS is in ppm
     num_data = dimsizes(flight_lat)     ;;# data points
@@ -57,65 +60,24 @@ begin
         flight_var(ind(flight_var.lt.0)) = -9999999 ;;covers different missing values or bugs in datasets
     end if
 
-printVarSummary(flight_var)
-;;---Alt  binning
-;    alt_wanted = (/1000,2000,3000,4000,5000,6000/)
-    alt_ind = round(flight_alt/1000,3)
-    num_bins = (max(alt_ind) - min(alt_ind))+1  ;;# of bins
-    bin_val = ispan(min(alt_ind),max(alt_ind),1)
-    print("Number of bins = "+num_bins)
-    print("Bin Values(km) = "+bin_val)
 
-    lat_bin = ispan (-90,90,1)
 
-    num_lat_bins = dimsizes(lat_bin)
+;;********************************************
+;;Plotting
+;;********************************************
 
-;    mean_bin = new (num_bins,float)
-;    std_bin = new(num_bins,float)
+    plot_type  =  "pdf"
+;    plot_name  = "plot_XY_flight_alt_zonal_all_"+mission_name
+    plot_name  = "plot_XY_flight_alt_zonal_all_"+mission_name+"_"+y_miss
+;    plot_name  = "plot_XY_flight_alt_zonal_all_"+mission_name+"_"+ARCTAS_miss
 
-    ;bin_var = new ((/num_data,num_bins,num_lat_bins/),float)
-
-    bin_var = new ((/num_bins,num_lat_bins/),float)
-
-    bin_var@_FillValue = -9999999
-
-;    err_bar = new ((/num_bins,2/),float)
-;    counter_data_arr = new (num_bins,float) ;;How many data in each bin
-
-    bin_lat = new ((/num_data,num_bins,num_lat_bins/),float)
-    bin_lat@_FillValue = -9999999    
-    bin_lon = new ((/num_data,num_bins,num_lat_bins/),float)
-    bin_lon@_FillValue =  -9999999
-    bin_alt = new ((/num_data,num_bins,num_lat_bins/),float)
-    bin_alt@_FillValue =  -9999999
-
- ;;-------
-
-;print (flight_lat_int(get1Dindex(lat_bin,flight_lat_int)))
-;print (lat_bin)
-do  i_lat_bin=0,num_lat_bins-1
-    do i_bin = 0,num_bins-1
-        indind := ind(flight_lat_int.eq.lat_bin(i_lat_bin).and.alt_ind.eq.bin_val(i_bin))
-        print ("LAT,ALT ="+lat_bin(i_lat_bin)+","+i_bin+" ind ="+ indind)
-        if (all(ismissing(indind)))then 
-            bin_var(i_bin,i_lat_bin) = -9999999
-        else
-            bin_var(i_bin,i_lat_bin) = avg (flight_var(indind))
-        end if
-    end do ;;i_bin 
-end do ;i_lat_bin
-
-print(bin_var)
-;;---------------------------------------------
-;; Plotting
-;;---------------------------------------------
-    plot_type = "pdf"
-    plot_name = "Flight_track_zonal"+mission_name+"-"+h_year+"_cross"
-    wks = gsn_open_wks(plot_type,plot_name)
+    wks = gsn_open_wks (plot_type, plot_name)
+ ;   colormap = "StepSeq25"
     colormap = "MPL_jet"
     gsn_define_colormap (wks,colormap)
+;    gsn_reverse_colormap (wks)
     cmap = gsn_retrieve_colormap(wks)
-
+   
     levels = fspan (1700,1900,20)
     nlevels = dimsizes(levels)
 ; Get a nice span of colors through the current color map, but
@@ -123,10 +85,19 @@ print(bin_var)
 ;
     colors = span_color_indexes(cmap(3:,:),dimsizes(levels)+1) + 3
 
+ ;   colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
+ ;   ncolors = dimsizes(colors)
+ ;   levels = fspan (1700,2000,ncolors-1)
+    ;levels = (/1300, 1340,1380,1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900./)
+    nlevels = dimsizes(levels)
+
+
 ;----------------------------------------------------------------------
 ; Create a map plot for which to add color-coded markers.
 ;----------------------------------------------------------------------
     res                       = True
+
+
     res@gsnMaximize           = True   ; maximize size of plot in window
     res@gsnDraw               = False  ; turn off draw
     res@gsnFrame              = False  ; turn off page advance
@@ -134,17 +105,26 @@ print(bin_var)
     res@vpWidthF   = 0.8
     res@vpHeightF  = 0.4
 
+    res@trYMinF     = 0
+    res@trYMaxF     = 15000
+    res@tiYAxisString = "ALT (m)"
+    res@tiYAxisFontHeightF = 0.02
+
+    res@tiXAxisString  = "LAT "
+    res@tiXAxisFontHeightF = 0.02
+    res@trXMinF   = -90
+    res@trXMaxF   = 90
+
     res@tiMainFontHeightF = 0.02
     res@gsnStringFontHeightF = 0.02
-    res@tiMainString         = mission_name+" 2010"
-    res@xyMarkLineMode  = "Lines"
-    res@xyLineThicknesses = 0.1
+;    res@tiMainString         = mission_name+" "+ARCTAS_miss
+;    res@tiMainString         = mission_name
+    res@tiMainString         = mission_name+" "+y_miss
 
     res@xyMarkerColors  = "grey100"
-    res@trYMinF   = -1000
-    res@trYMaxF  = 16000
 
     plot = gsn_csm_xy(wks,flight_lat,flight_alt,res)
+;    map = gsn_csm_map (wks,mpres)
 
 ;----------------------------------------------------------------------
 ; Group the wind speed values according to which range they fall
@@ -152,32 +132,25 @@ print(bin_var)
 ;----------------------------------------------------------------------
     mkres               = True
     mkres@gsMarkerIndex = 16        ; filled dot
-    mkres@gsMarkerSizeF = 0.01
-    Var = new ((/num_lat_bins/),float)
-    markerid = new((/nlevels+1,num_bins/),graphic)
-    do ip_bin = 0,num_bins-1
-;        Var = flight_var
-        Var = bin_var(ip_bin,:)
-        do i=0,nlevels
-            if(i.eq.0) then                         ; first level
-                ii := ind(Var.lt.levels(0))
-            else if(i.eq.nlevels) then              ; middle levels
-                ii := ind(Var.ge.levels(nlevels-1))
-            else                                    ; last level
-                ii := ind(Var.ge.levels(i-1).and.Var.lt.levels(i))
-            end if
-            end if
-            if(.not.any(ismissing(ii))) then
-                mkres@gsMarkerColor = colors(i)
-                ;markerid(i) = gsn_add_polymarker(wks,plot,flight_lat(ii),flight_alt(ii),mkres)
-;print (bin_alt(ii,ip_bin))
-                markerid(i,ip_bin) = gsn_add_polymarker(wks,plot,lat_bin(ii),1000*bin_val(ip_bin),mkres)
-            end if
-        end do
-;        delete (Var)
-    end do ;;ip_bin
-
+    mkres@gsMarkerSizeF = 0.005
+    markerid = new(nlevels+1,graphic)
+    Var = flight_var
+    do i=0,nlevels
+        if(i.eq.0) then                         ; first level
+            ii := ind(Var.lt.levels(0))
+        else if(i.eq.nlevels) then              ; middle levels
+            ii := ind(Var.ge.levels(nlevels-1))
+        else                                    ; last level
+            ii := ind(Var.ge.levels(i-1).and.Var.lt.levels(i))
+        end if
+        end if
+        if(.not.any(ismissing(ii))) then
+            mkres@gsMarkerColor = colors(i)
+            markerid(i) = gsn_add_polymarker(wks,plot,flight_lat(ii),flight_alt(ii),mkres)
+        end if
+    end do
     draw(plot)   ; This will draw map and the attached markers
+
 ;----------------------------------------------------------------------
 ; Draw a labelbar
 ;----------------------------------------------------------------------
@@ -200,7 +173,12 @@ print(bin_var)
     lbres@pmLabelBarOrthogonalPosF =0
     labels = sprintf("%4.0f",levels)
   gsn_labelbar_ndc (wks,nlevels+1,labels,0.15,0.2,lbres) 
-;    gsn_labelbar_ndc (wks,nlevels+1,labels,0.0,0.8,lbres)
+;  gsn_labelbar_ndc (wks,nlevels+1,labels,0.0,0.8,lbres)
 
-    frame(wks)
+
+
+    
+
+    frame (wks)
+
 end ;;begin

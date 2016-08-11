@@ -3,8 +3,7 @@
 ;      Compare surface observations of CH4 and CO from the 
 ;      NOAA ESRL GMD Carbon Cycle Cooperative Global Air Sampling Network
 ;      with model output
-;      Creates station plots of observed climatological mean seasonal cycle  
-;      against model mean seasonal cycle
+;      Creates one plot for each model run, annual avg
 ;
 ; Modification History
 ;      Created on July 16, 2015, V. Naik 
@@ -222,7 +221,7 @@ version    = "/awg/ulm_201505/"
 platform   = "/gfdl.ncrc3-intel15-prod-openmp/"
 experiment  = "c96L48_am4g10_fullchem_2000climo"
 
-do i_mode = 2,2  ;;conc and emis mode 
+do i_mode = 0,2  ;;conc and emis mode 
     
 if (i_mode.eq.0) then
   modeldir = modeldir_conc
@@ -280,6 +279,7 @@ dry_model_conc&time = time
 dry_model_conc&lat = model_conc&lat
 dry_model_conc&lon = model_conc&lon
 
+modelconc_avg = dim_avg_n_Wrap(dry_model_conc,0)
 
 ; Calculate comparison statistics
 ;**********************************
@@ -300,16 +300,20 @@ dry_model_conc&lon = model_conc&lon
 ;;*******************************************
 
 plot_type = "pdf"
-plot_name = "plot_Map_gmd_climo_"+xsp+"_"+model_mode
+plot_name = "plot_Map_gmd_climo_Annual"+xsp+"_"+model_mode
 wks = gsn_open_wks (plot_type, plot_name)
-gsn_define_colormap(wks,"StepSeq25")
+gsn_define_colormap(wks,"MPL_jet")
+cmap = gsn_retrieve_colormap(wks)
 
 ;---Set up some map resources.
   mpres              = True
   mpres@gsnMaximize  = True             ; Maximize plot in frame.
   mpres@gsnFrame     = False            ; Don't advance the frame
   mpres@gsnDraw      = False            ; Don't advance the frame
-  
+    
+  mpres@tiMainString = "Mean Surface CH4 climo (1996-2005):GMD vs. "+model_mode
+  mpres@tiMainFontHeightF = 0.01
+
   mpres@tmYLLabelFontHeightF = 0.015
   mpres@tmYLMajorOutwardLengthF = -0.00
   mpres@tmYRMajorOutwardLengthF = -0.00
@@ -332,11 +336,13 @@ gsn_define_colormap(wks,"StepSeq25")
 
   gsres               = True
   gsres@gsMarkerIndex = 16  ; Use filled dots for markers.
+  gsres@gsMarkerSizeF = 0.015
   mkres = True              ; for hollow markers so that each of the colored markers can have an outline
   mkres@gsMarkerIndex = 4   ; hollow dots
   mkres@gsMarkerColor    = "black"
+  mkres@gsMarkerSizeF  = 0.015
 
-  colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
+;  colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
 
   rpanel = True               ; needed for panel plots
   rpanel@gsnFrame=False       ; required for panel plots
@@ -358,17 +364,18 @@ gsn_define_colormap(wks,"StepSeq25")
     arr = (/0.,20.,40.,60.,80, 100.,120., 140., 160., 180.,200.,250.,300.,350., 400.,450.,600.,800 /)    ; 
   else if (xsp .eq. "ch4") then
 ;    arr = (/1560,1580,1600.,1620.,1640.,1660.,1680.,1700.,1720.,1740.,1760.,1780.,1800.,1820.,1840.,1860.,1880.,1900./)    ;
-    arr = (/1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900.,1940,1980,2020/)
-   
+    ;arr = (/1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900.,1940,1980,2020/)
+    arr = fspan(1600,2000,41) 
     ;   arr = (/1560,1580,1600.,1620.,1640.,1660.,1680.,1700.,1720.,1740.,1760.,1780.,1800./)
   end if
   end if
+  print(arr)
   narr = dimsizes(arr)
   num_distinct_markers = dimsizes(arr)+1        ; number of distinct markers
+  colors = span_color_indexes(cmap(3:,:),dimsizes(arr)+1) + 3
 
-
-  lat_new = new((/nmons,num_distinct_markers,nsites/),float,-999)
-  lon_new = new((/nmons,num_distinct_markers,nsites/),float,-999)
+  lat_new = new((/num_distinct_markers,nsites/),float,-999)
+  lon_new = new((/num_distinct_markers,nsites/),float,-999)
 
 
   map = new(nmons, "graphic")
@@ -376,17 +383,18 @@ gsn_define_colormap(wks,"StepSeq25")
   mpres@cnFillColors = colors
 
 ;---Group the points according to which range they fall in.
-do m = 0, nmons-1    ; for each month
+obsconc_avg = dim_avg_n(obsconc,1)
+;do m = 0, nmons-1    ; for each month
  
  do i = 0, num_distinct_markers-1
     if (i.eq.0) then
-      indexes = ind(obsconc(:,m).lt.arr(0))
+      indexes = ind(obsconc_avg.lt.arr(0))
     end if
     if (i.eq.num_distinct_markers-1) then
-      indexes = ind(obsconc(:,m).ge.max(arr))
+      indexes = ind(obsconc_avg.ge.max(arr))
     end if
     if (i.gt.0.and.i.lt.num_distinct_markers-1) then       
-      indexes = ind(obsconc(:,m) .ge.arr(i-1).and.obsconc(:,m).lt.arr(i))
+      indexes = ind(obsconc_avg .ge.arr(i-1).and.obsconc_avg.lt.arr(i))
     end if
 ;
 ; Now that we have the set of indexes whose values fall within 
@@ -396,34 +404,55 @@ do m = 0, nmons-1    ; for each month
 ;
     if (.not.any(ismissing(indexes))) then 
       npts_range = dimsizes(indexes)   ; # of points in this range.
-      lat_new(m,i,0:npts_range-1) = stationlat(indexes)
-      lon_new(m,i,0:npts_range-1) = stationlon(indexes)
+      lat_new(i,0:npts_range-1) = stationlat(indexes)
+      lon_new(i,0:npts_range-1) = stationlon(indexes)
     end if
     delete(indexes)            ; Necessary b/c "indexes" may be a different
                                ; size next time.
   end do
-  mpres@gsnCenterString = mons(m)
-  mpres@gsnRightString = "# sites="+ct(m)
-  map(m) = gsn_csm_contour_map(wks,dry_model_conc(m,:,:),mpres)
+;  mpres@gsnCenterString = mons(m)
+;  mpres@gsnRightString = "# sites="+ct(m)
+  mapC = gsn_csm_contour_map(wks,modelconc_avg,mpres)
   
 ;---Loop through each "bin" and attach the markers to the map.
   do i = 0, num_distinct_markers-1
-    if (.not.ismissing(lat_new(m,i,0)))
+    if (.not.ismissing(lat_new(i,0)))
       gsres@gsMarkerColor      = colors(i)
       dumstr = unique_string("marker")
-      map@$dumstr$ = gsn_add_polymarker(wks,map(m),lon_new(m,i,:),lat_new(m,i,:),gsres)
+      map@$dumstr$ = gsn_add_polymarker(wks,mapC,lon_new(i,:),lat_new(i,:),gsres)
       holstr = unique_string("marker")  ; for marker (black) outline
-      map@$holstr$ = gsn_add_polymarker(wks,map(m),lon_new(m,i,:),lat_new(m,i,:),mkres)
+      map@$holstr$ = gsn_add_polymarker(wks,mapC,lon_new(i,:),lat_new(i,:),mkres)
     end if
   end do
 
-end do ; month
-  rpanel@txString = "Monthly mean "+str_upper(xsp)+" Climo(1996-2005) : GMD vs. "+model_mode
-  gsn_panel(wks,map,(/4,3/),rpanel)
+;end do ; month
+;  rpanel@txString = "Monthly mean "+str_upper(xsp)+" Climo(1996-2005) : GMD vs. "+model_mode
+;  gsn_panel(wks,map,(/4,3/),rpanel)
+  draw(mapC)
+ 
+ ;  Adding Labels
+    lbres   = True
+    lbres@vpWidthF           = 0.70
+    lbres@vpHeightF          = 0.10
+    lbres@lbPerimOn          = False            ; Turn off perimeter.
+    lbres@lbOrientation      = "Horizontal"     ; Default is vertical.
+    lbres@lbLabelAlignment   = "ExternalEdges"
+    lbres@lbFillColors       = colors
+    lbres@lbMonoFillPattern  = True             ; Fill them all solid.
+    lbres@lbLabelFontHeightF = 0.013            ; label font height
+
+    lbres@lbTitleString      = "CH4 (ppbv)"         ; title
+    lbres@lbTitlePosition    = "Bottom"         ; location of title
+    lbres@lbTitleFontHeightF = 0.015             ; title font height
+
+    lbres@pmLabelBarOrthogonalPosF =0
+    labels = sprintf("%4.0f",arr)
+    gsn_labelbar_ndc(wks,dimsizes(arr)-1,labels,0.15,0.2,lbres)
+  
   frame(wks)
 
-  delete(map)
-  delete(obsconc)
+;  delete(map)
+;  delete(obsconc)
 
 
 

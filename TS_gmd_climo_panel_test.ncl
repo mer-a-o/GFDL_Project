@@ -44,7 +44,7 @@ datadir_climo = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ch4_flask_surface/cli
 
 obsdir_gmd        = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ncdf/"
 modeldir_conc = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4conc_newinitcond/"
-modeldir_emis = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4emis_newinitcond/"
+modeldir_emis = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_30percentch4emis_newinitcond/"
 modeldir_emis40 = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_40percentch4emis_newinitcond/"
 workdir           = "./"
 

@@ -299,10 +299,11 @@ dry_model_conc&lon = model_conc&lon
 ;; Plotting
 ;;*******************************************
 
-plot_type = "pdf"
+plot_type = "x11"
 plot_name = "plot_Map_gmd_climo_"+xsp+"_"+model_mode
 wks = gsn_open_wks (plot_type, plot_name)
-gsn_define_colormap(wks,"StepSeq25")
+gsn_define_colormap(wks,"MPL_jet")
+cmap = gsn_retrieve_colormap(wks)
 
 ;---Set up some map resources.
   mpres              = True
@@ -336,7 +337,7 @@ gsn_define_colormap(wks,"StepSeq25")
   mkres@gsMarkerIndex = 4   ; hollow dots
   mkres@gsMarkerColor    = "black"
 
-  colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
+;  colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
 
   rpanel = True               ; needed for panel plots
   rpanel@gsnFrame=False       ; required for panel plots
@@ -358,14 +359,15 @@ gsn_define_colormap(wks,"StepSeq25")
     arr = (/0.,20.,40.,60.,80, 100.,120., 140., 160., 180.,200.,250.,300.,350., 400.,450.,600.,800 /)    ; 
   else if (xsp .eq. "ch4") then
 ;    arr = (/1560,1580,1600.,1620.,1640.,1660.,1680.,1700.,1720.,1740.,1760.,1780.,1800.,1820.,1840.,1860.,1880.,1900./)    ;
-    arr = (/1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900.,1940,1980,2020/)
-   
+    ;arr = (/1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900.,1940,1980,2020/)
+    arr = fspan(1600,2000,41) 
     ;   arr = (/1560,1580,1600.,1620.,1640.,1660.,1680.,1700.,1720.,1740.,1760.,1780.,1800./)
   end if
   end if
+  print(arr)
   narr = dimsizes(arr)
   num_distinct_markers = dimsizes(arr)+1        ; number of distinct markers
-
+  colors = span_color_indexes(cmap(3:,:),dimsizes(arr)+1) + 3
 
   lat_new = new((/nmons,num_distinct_markers,nsites/),float,-999)
   lon_new = new((/nmons,num_distinct_markers,nsites/),float,-999)
@@ -405,7 +407,7 @@ do m = 0, nmons-1    ; for each month
   mpres@gsnCenterString = mons(m)
   mpres@gsnRightString = "# sites="+ct(m)
   map(m) = gsn_csm_contour_map(wks,dry_model_conc(m,:,:),mpres)
-  
+ printMinMax(dry_model_conc,0) 
 ;---Loop through each "bin" and attach the markers to the map.
   do i = 0, num_distinct_markers-1
     if (.not.ismissing(lat_new(m,i,0)))
@@ -423,7 +425,7 @@ end do ; month
   frame(wks)
 
   delete(map)
-  delete(obsconc)
+;  delete(obsconc)
 
 
 

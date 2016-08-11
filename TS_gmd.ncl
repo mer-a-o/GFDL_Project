@@ -89,7 +89,7 @@ begin
     print("data available for "+num_site_avail+ " stations")
 ;;*******************************************************
 ;;---Plotting
-    plot_type ="x11"
+    plot_type ="pdf"
     plot_name = "GMD_station data"
 
 ;    plot_time = obs_time

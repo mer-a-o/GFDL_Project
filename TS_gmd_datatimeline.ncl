@@ -88,14 +88,26 @@ begin
     plot_data = new ((/nyears,nssites/),integer)
 printVarSummary(obs_conc)
 printVarSummary(plot_data)
+    stn_avl_ind := 0
+    stn_avl_label = new (nssites,string)
+    stn_avl_lat_label = new (nssites,string)
     do ii_st = 0, nssites-1
-        do jj_yr = 0,nyears-1
-            ;print(.not.all(ismissing(obs_conc(jj_yr*12:jj_yr*12+11,ii_st))))
-            if (.not.all(ismissing(obs_conc(jj_yr*12:jj_yr*12+11,ii_st)))) then
-                plot_data (jj_yr,ii_st) = ii_st
-            end if
-        end do ;;jj_year
+        if (.not.all(ismissing(obs_conc(:,ii_st)))) then
+            ;print (obs_conc(:,ii_st))
+            print (stn_avl_ind+"-ALL years avail for "+stationcode(ii_st))
+            do jj_yr = 0,nyears-1
+                ;print(.not.all(ismissing(obs_conc(jj_yr*12:jj_yr*12+11,ii_st))))
+                if (.not.all(ismissing(obs_conc(jj_yr*12:jj_yr*12+11,ii_st)))) then
+                    plot_data (jj_yr,stn_avl_ind) = stn_avl_ind
+                end if
+            end do ;;jj_year
+            ;stn_avl_label(stn_avl_ind) = stationcode(ii_st)
+            stn_avl_label(stn_avl_ind) = stationstring(ii_st)
+            stn_avl_ind := stn_avl_ind+1
+            stn_avl_lat_label (stn_avl_ind) = flt2string(stationlat(ii_st))
+        end if
     end do ;;ii_site
+;print (stn_avl_label)
 ;    asciiwrite("./data_availability_timeline.txt",transpose(plot_data))
 ;;*******************************************************
 ;;---Plotting
@@ -110,45 +122,49 @@ printVarSummary(plot_data)
     plot_time@units = "years since 1983-01-01 00:00:00"
 
 ;;---Plot Resources
-    wks  =  gsn_open_wks (plot_type,plot_name)
-    gsn_define_colormap(wks,"default")
 
 
     wks  =  gsn_open_wks (plot_type,plot_name)
     gsn_define_colormap(wks,"default")
     res  =  True
     res@gsnMaximize  =  True
-    res@gsnPaperOrientation  =  "landscape"
+    res@gsnPaperOrientation  =  "portrait"
     ;res@gsnDraw     = False
     ;res@gsnFrame    = False
     res@tiMainString   =  "GMD Station Data Availability"
     res@tiMainFontHeightF  = 0.02
 
 ;;---Y Axis
+    res@tmYUseLeft           = False   ; Make right axis independent of left
+    res@tmYLOn               = False   ; Turn off left tickmarks
+    res@tmYROn               = True    ; Turn on right tickmarks
+    res@tmYLMinorOn          = False   ; Turn off minor ticks on Y axis
+    res@tmYLLabelsOn         = False   ; Turn off left labels
+    res@tmYRLabelsOn         = True    ; Turn on right labels
+
+    res@tmYRMode  = "Explicit"
+    res@tmYRValues = ispan(0,stn_avl_ind-1,1)
+    res@tmYRLabels = stn_avl_label
+    res@tmYRLabelFontHeightF = 0.01
 
     res@tmYLMode  = "Explicit"
-    res@tmYLValues = ispan(0,nssites-1,1)
-    res@tmYLLabels = stationcode
-;    res@tmYLLabelConstantSpacingF  = 0
-;    res@tmYLMinLabelSpacingF = 0.2
+    res@tmYLValues = ispan(0,stn_avl_ind-1,1)
+    res@tmYLLabels = stn_avl_lat_label
     res@tmYLLabelFontHeightF = 0.01
-    res@tiYAxisFontHeightF = 0.015  
-;    res@tmYLTickSpacingF= 5
-;    res@tmYLMinorPerMajor = 3
 
-    res@tmYROn               = False    ; Turn on right tickmarks
-    res@tmXTOn               = False   ; Turn off top tickmarks
-    res@tmYLMinorOn          = False   ; Turn off minor ticks on Y axis
-;    res@trYMinF = -1
-;    res@trYMaxF = 141
+    res@tiYAxisFontHeightF = 0.015  
+
+    res@trYMinF = -1
+    res@trYMaxF = stn_avl_ind+1
 ;;---X Axis
     restick  =  True
     time_axis_labels (plot_time, res, restick)
     res@tmXBLabelFontHeightF  = 0.015
+    res@tmXTOn               = False   ; Turn off top tickmarks
 
     ;;-----For layout
-    res@vpWidthF    = 0.75
-    res@vpHeightF   = 0.8
+    res@vpWidthF    = 0.5
+    res@vpHeightF   = 0.9
 
     res@xyMarkLineMode = "Markers"
     Marker_style = new (141,integer)
@@ -163,7 +179,7 @@ printVarSummary(plot_data)
 ;    Line_thickness = 3   
 ;    res@xyLineThicknesses  =  Line_thickness   
 
-    plot = gsn_csm_xy (wks, plot_time,transpose(plot_data(:,:)),res)
+    plot = gsn_csm_xy (wks, plot_time,transpose(plot_data(:,0:stn_avl_ind)),res)
 
   end do ;;i_sp
   

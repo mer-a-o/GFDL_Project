@@ -98,7 +98,7 @@ res   = True
 res@gsnDraw = False
 res@gsnFrame = False
 res@gsnMaximize = True
-res@gsnPaperOrientation = "landscape"
+res@gsnPaperOrientation = "portrait"
 
 ; X axis
 res@trXMinF       = imons(0)
@@ -130,7 +130,7 @@ res@vpHeightF   = 0.25
 res@xyMarkLineMode   = "MarkLines"               ; choose which have markers
 res@xyMarkers         =  (/7,6,16/)                      ; choose type of marker  
 res@xyMarkerColors    = (/"red","green","black"/)   ; Marker color
-res@xyMarkerSizeF     = 0.013                     ; Marker size (default 0.01)
+res@xyMarkerSizeF     = 0.017                     ; Marker size (default 0.01)
 res@xyMarkerThicknessF = 2.0
 res@xyLineColors      = (/"red","green","black"/)            
 res@xyDashPattern     = 0.
@@ -222,7 +222,7 @@ version    = "/awg/ulm_201505/"
 platform   = "/gfdl.ncrc3-intel15-prod-openmp/"
 experiment  = "c96L48_am4g10_fullchem_2000climo"
 
-do i_mode = 2,2  ;;conc and emis mode 
+do i_mode = 0,2  ;;conc and emis mode 
     
 if (i_mode.eq.0) then
   modeldir = modeldir_conc
@@ -298,12 +298,6 @@ dry_model_conc&lon = model_conc&lon
 ;;*******************************************
 ;; Plotting
 ;;*******************************************
-
-plot_type = "pdf"
-plot_name = "plot_Map_gmd_climo_"+xsp+"_"+model_mode
-wks = gsn_open_wks (plot_type, plot_name)
-gsn_define_colormap(wks,"StepSeq25")
-
 ;---Set up some map resources.
   mpres              = True
   mpres@gsnMaximize  = True             ; Maximize plot in frame.
@@ -335,8 +329,9 @@ gsn_define_colormap(wks,"StepSeq25")
   mkres = True              ; for hollow markers so that each of the colored markers can have an outline
   mkres@gsMarkerIndex = 4   ; hollow dots
   mkres@gsMarkerColor    = "black"
-
-  colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
+  mkres@gsMarkerSizeF = 0.015
+  gsres@gsMarkerSizeF = 0.015
+;  colors = (/0,26,24,22,21,20,19,17,16,14,12,11,9,7,6,5,4,3,2/)
 
   rpanel = True               ; needed for panel plots
   rpanel@gsnFrame=False       ; required for panel plots
@@ -358,26 +353,33 @@ gsn_define_colormap(wks,"StepSeq25")
     arr = (/0.,20.,40.,60.,80, 100.,120., 140., 160., 180.,200.,250.,300.,350., 400.,450.,600.,800 /)    ; 
   else if (xsp .eq. "ch4") then
 ;    arr = (/1560,1580,1600.,1620.,1640.,1660.,1680.,1700.,1720.,1740.,1760.,1780.,1800.,1820.,1840.,1860.,1880.,1900./)    ;
-    arr = (/1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900.,1940,1980,2020/)
-   
+    ;arr = (/1420,1460,1500,1540,1580,1620.,1660.,1700.,1740.,1760.,1800.,1820.,1840.,1860.,1900.,1940,1980,2020/)
+    arr = fspan(1600,2000,41) 
     ;   arr = (/1560,1580,1600.,1620.,1640.,1660.,1680.,1700.,1720.,1740.,1760.,1780.,1800./)
   end if
   end if
+  print(arr)
   narr = dimsizes(arr)
   num_distinct_markers = dimsizes(arr)+1        ; number of distinct markers
-
 
   lat_new = new((/nmons,num_distinct_markers,nsites/),float,-999)
   lon_new = new((/nmons,num_distinct_markers,nsites/),float,-999)
 
 
-  map = new(nmons, "graphic")
-  mpres@cnLevels = arr
-  mpres@cnFillColors = colors
-
-;---Group the points according to which range they fall in.
+;  map = new(nmons, "graphic")
+ ;---Group the points according to which range they fall in.
 do m = 0, nmons-1    ; for each month
  
+    plot_type = "png"
+    plot_name = "plot_Map_gmd_climo_"+xsp+"_"+model_mode+"_"+mons(m)
+    wks = gsn_open_wks (plot_type, plot_name)
+    gsn_define_colormap(wks,"MPL_jet")
+    cmap = gsn_retrieve_colormap(wks)
+    colors = span_color_indexes(cmap(3:,:),dimsizes(arr)+1) + 3
+    mpres@cnLevels = arr
+    mpres@cnFillColors = colors
+
+
  do i = 0, num_distinct_markers-1
     if (i.eq.0) then
       indexes = ind(obsconc(:,m).lt.arr(0))
@@ -404,26 +406,29 @@ do m = 0, nmons-1    ; for each month
   end do
   mpres@gsnCenterString = mons(m)
   mpres@gsnRightString = "# sites="+ct(m)
-  map(m) = gsn_csm_contour_map(wks,dry_model_conc(m,:,:),mpres)
+  mpres@gsnRightStringFontHeightF = 0.013
+  mpres@gsnCenterStringFontHeightF = 0.013
+  map = gsn_csm_contour_map(wks,dry_model_conc(m,:,:),mpres)
+;  map(m) = gsn_csm_contour_map(wks,dry_model_conc(m,:,:),mpres)
   
 ;---Loop through each "bin" and attach the markers to the map.
   do i = 0, num_distinct_markers-1
     if (.not.ismissing(lat_new(m,i,0)))
       gsres@gsMarkerColor      = colors(i)
       dumstr = unique_string("marker")
-      map@$dumstr$ = gsn_add_polymarker(wks,map(m),lon_new(m,i,:),lat_new(m,i,:),gsres)
+      map@$dumstr$ = gsn_add_polymarker(wks,map,lon_new(m,i,:),lat_new(m,i,:),gsres)
       holstr = unique_string("marker")  ; for marker (black) outline
-      map@$holstr$ = gsn_add_polymarker(wks,map(m),lon_new(m,i,:),lat_new(m,i,:),mkres)
+      map@$holstr$ = gsn_add_polymarker(wks,map,lon_new(m,i,:),lat_new(m,i,:),mkres)
     end if
   end do
-
-end do ; month
-  rpanel@txString = "Monthly mean "+str_upper(xsp)+" Climo(1996-2005) : GMD vs. "+model_mode
-  gsn_panel(wks,map,(/4,3/),rpanel)
+  draw(map)
   frame(wks)
+end do ; month
+;  rpanel@txString = "Monthly mean "+str_upper(xsp)+" Climo(1996-2005) : GMD vs. "+model_mode
+;  gsn_panel(wks,map,(/4,3/),rpanel)
 
   delete(map)
-  delete(obsconc)
+;  delete(obsconc)
 
 
 

@@ -44,7 +44,11 @@ datadir_climo = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ch4_flask_surface/cli
 
 obsdir_gmd        = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ncdf/"
 modeldir_conc = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4conc_newinitcond/"
+
 modeldir_emis = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4emis_newinitcond/"
+
+modeldir_emis30 = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_30percentch4emis_newinitcond/"
+
 modeldir_emis40 = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_40percentch4emis_newinitcond/"
 workdir           = "./"
 
@@ -124,11 +128,11 @@ res@vpWidthF    = 0.45
 res@vpHeightF   = 0.25
 
 res@xyMarkLineMode   = "MarkLines"               ; choose which have markers
-res@xyMarkers         =  (/7,6,9,16/)                      ; choose type of marker  
-res@xyMarkerColors    = (/"red","green","blue","black"/)   ; Marker color
+res@xyMarkers         =  (/7,6,15,9,16/)                      ; choose type of marker  
+res@xyMarkerColors    = (/"red","green","orange2","blue","black"/)   ; Marker color
 res@xyMarkerSizeF     = 0.013                     ; Marker size (default 0.01)
 res@xyMarkerThicknessF = 2.0
-res@xyLineColors      = (/"red","green","blue","black"/)            
+res@xyLineColors      = (/"red","green","orange2","blue","black"/)            
 res@xyDashPattern     = 0.
 
 ; Create legend
@@ -136,10 +140,10 @@ res@xyDashPattern     = 0.
  lgres@vpWidthF           = 0.15                   ; width of legend (NDC)
  lgres@vpHeightF          = 0.03                   ; height of legend (NDC)
  lgres@lgPerimOn          = False                 ; turn off perimeter
- lgres@lgMarkerIndexes    = (/7,6,9,16/)              ; dash indexes
+ lgres@lgMarkerIndexes    = (/7,6,15,9,16/)              ; dash indexes
  lgres@lgItemType         = "MarkLines"
- lgres@lgMarkerColors     = (/"red","green","blue","black"/)          ; colors for legend lines
- lgres@lgLineColors       = (/"red","green","blue","black"/)
+ lgres@lgMarkerColors     = (/"red","green","orange2","blue","black"/)          ; colors for legend lines
+ lgres@lgLineColors       = (/"red","green","orange2","blue","black"/)
  lgres@lgDashIndexes      = (/0., 0.,0.,0./)
  lgres@lgOrientation      = "Vertical"
  lgres@lgLabelsOn         = "True"
@@ -217,7 +221,7 @@ experiment  = "c96L48_am4g10_fullchem_2000climo"
 ;platform       = "/gfdl.ncrc2-intel-prod-openmp/"
 ;experiment     = "c96L48_am4g6_fullchem"
 
-mode_run = (/"conc","emis20","emis40"/)
+mode_run = (/"conc","emis20","emis30","emis40"/)
 num_mode = dimsizes(mode_run)
 ;mode_run = "emis"
 
@@ -237,8 +241,12 @@ else if (i_mode.eq.1) then
   modeldir = modeldir_emis
   print ("MODE = ch4emis20")
 else if (i_mode.eq.2) then
+  modeldir = modeldir_emis30
+  print ("MODE = ch4emis30")
+else if (i_mode.eq.3) then
   modeldir = modeldir_emis40
   print ("MODE = ch4emis40")
+end if
 end if
 end if
 end if
@@ -350,8 +358,8 @@ end do ;;i_mode
 
 ; Plot Obs-Model comparisons  - Seasonal cycle at individual sites (ssites)
 ;****************************
-plot_type = "x11"
-plot_name = "plot_TS_gmd_climo_panel_"+xsp
+plot_type = "pdf"
+plot_name = "plot_TS_gmd_climo_panel_noStat_"+xsp
 wks = gsn_open_wks(plot_type,plot_name)
 plotvar(i_mode,:,:) = climoconc
 
@@ -403,15 +411,15 @@ do st = 0, nssites - 2
 
   txres@txFontColor = "red"
   stats_conc = "Mean bias (conc)="+sprintf("%4.1f",meanbias(0,st))+"ppb, r="+sprintf("%4.2f",correlation(0,st))
-  stattext = gsn_add_text(wks,plot(st),stats_conc,0.5,yposn_conc,txres)
+;  stattext = gsn_add_text(wks,plot(st),stats_conc,0.5,yposn_conc,txres)
 
   txres@txFontColor = "chartreuse3"
   stats_emis = "Mean bias(emis20)="+sprintf("%4.1f",meanbias(1,st))+"ppb, r="+sprintf("%4.2f",correlation(1,st))
-  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis,txres)
+;  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis,txres)
 
   txres@txFontColor = "blue"
   stats_emis = "Mean bias(emis40)="+sprintf("%4.1f",meanbias(2,st))+"ppb, r="+sprintf("%4.2f",correlation(2,st))
-  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis40,txres)
+;  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis40,txres)
 
 
 
@@ -425,13 +433,13 @@ begx = 0
 do f = 0, nssites/8 - 1
  endx = begx+7
  gsn_panel(wks,plot(begx:endx),(/4,2/),rpanel) 
- gsn_legend_ndc(wks,num_mode+1,(/"conc","emis","GMD"/),0.2,0.03,lgres)
+ gsn_legend_ndc(wks,num_mode+1,(/"conc","emis20","emis30","emis40","GMD"/),0.2,0.03,lgres)
  gsn_text_ndc(wks,"# of years in climatology",0.5,0.01,amres) 
  frame(wks)
  begx = endx+1
 end do 
 gsn_panel(wks,plot(endx+1:nssites-1),(/4,2/),rpanel)
-gsn_legend_ndc(wks,num_mode+1,(/"conc","emis","GMD"/),0.2,0.03,lgres)
+gsn_legend_ndc(wks,num_mode+1,(/"conc","emis20","emis30","emis40","GMD"/),0.2,0.03,lgres)
 gsn_text_ndc(wks,"number of years in obs climatology",0.5,0.01,amres) 
 frame(wks)
 

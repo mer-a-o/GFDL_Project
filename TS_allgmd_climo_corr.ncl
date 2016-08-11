@@ -45,6 +45,7 @@ datadir_climo = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ch4_flask_surface/cli
 obsdir_gmd        = "/Users/mabdioskouei/GFDL_METHANE/obs_data/ncdf/"
 modeldir_conc = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4conc_newinitcond/"
 modeldir_emis = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_ch4emis_newinitcond/"
+modeldir_emis30 = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_30percentch4emis_newinitcond/"
 modeldir_emis40 = "/Users/mabdioskouei/GFDL_METHANE/model_output/c96L48_am4g10_fullchem_2000climo_40percentch4emis_newinitcond/"
 workdir           = "./"
 
@@ -89,77 +90,9 @@ mons = (/"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"
 nmons = dimsizes(mons)
 
 
-do sp = 0, nspecies - 1
+;do sp = 0, nspecies - 1
+  sp = 0
   xsp = species(sp)
-
-res   = True
-res@gsnDraw = False
-res@gsnFrame = False
-
-; X axis
-res@trXMinF       = imons(0)
-res@trXMaxF       = imons(11)
-res@tmXBMode      = "Explicit"
-res@tmXBValues    = imons
-res@tmXBLabelsOn = True
-res@tmXBLabels  = mons
-res@tmXBLabelFontHeightF = 0.02
-res@tmXBLabelStride  = 2
-res@tmXBMajorOutwardLengthF = -0.00
-res@tmXBMinorOutwardLengthF = -0.00
-res@tiXAxisFontHeightF = 0.02  
-
-; Y axis
-res@tiYAxisString  = "Surface "+xsp+" (ppb)" 
-res@tiYAxisFontHeightF = 0.02  
-res@tmYLLabelFontHeightF = 0.02
-res@tmYLMajorOutwardLengthF = -0.00  ; Y axis tickmarks
-res@tmYRMajorOutwardLengthF = -0.00
-res@tmYLMinorOutwardLengthF = -0.00
-res@tmYRMinorOutwardLengthF = -0.00
-
-
-; For layout
-res@vpWidthF    = 0.45
-res@vpHeightF   = 0.25
-
-res@xyMarkLineMode   = "MarkLines"               ; choose which have markers
-res@xyMarkers         =  (/7,6,9,16/)                      ; choose type of marker  
-res@xyMarkerColors    = (/"red","green","blue","black"/)   ; Marker color
-res@xyMarkerSizeF     = 0.013                     ; Marker size (default 0.01)
-res@xyMarkerThicknessF = 2.0
-res@xyLineColors      = (/"red","green","blue","black"/)            
-res@xyDashPattern     = 0.
-
-; Create legend
- lgres                    = True
- lgres@vpWidthF           = 0.15                   ; width of legend (NDC)
- lgres@vpHeightF          = 0.03                   ; height of legend (NDC)
- lgres@lgPerimOn          = False                 ; turn off perimeter
- lgres@lgMarkerIndexes    = (/7,6,9,16/)              ; dash indexes
- lgres@lgItemType         = "MarkLines"
- lgres@lgMarkerColors     = (/"red","green","blue","black"/)          ; colors for legend lines
- lgres@lgLineColors       = (/"red","green","blue","black"/)
- lgres@lgDashIndexes      = (/0., 0.,0.,0./)
- lgres@lgOrientation      = "Vertical"
- lgres@lgLabelsOn         = "True"
- lgres@lgAutoManage       = True
- lgres@lgLabelFontHeightF = 0.1
-
- 
-rpanel = True
-rpanel@txFontHeightF = 0.015
-rpanel@gsnFrame = False				   ; required for panel plots
-rpanel@gsnMaximize = True
-rpanel@gsnPanelLabelBar = False
-rpanel@gsnPanelBottom = 0.02
-rpanel@gsnPanelTop = 0.95
-res@gsnStringFontHeightF   = 0.02
-
-; Setting for additional text
-amres = True
-amres@txFontHeightF = 0.009   
-amres@txFontColor = "blue"
 
 
 ; Define filenames and arrays to hold obs data
@@ -217,11 +150,13 @@ experiment  = "c96L48_am4g10_fullchem_2000climo"
 ;platform       = "/gfdl.ncrc2-intel-prod-openmp/"
 ;experiment     = "c96L48_am4g6_fullchem"
 
-mode_run = (/"conc","emis20","emis40"/)
+mode_run = (/"conc","emis20","emis30","emis40"/)
 num_mode = dimsizes(mode_run)
 ;mode_run = "emis"
 
-plotvar = new((/num_mode+1,nssites,12/),float)  ;;[conc, emis, obs]
+plotvar_bias = new((/num_mode,nssites/),float)  ;;[conc, emis, obs]
+plotvar_corr = new((/num_mode,nssites/),float)
+
 correlation = new((/num_mode,nssites/),float)
 correlation@_FillValue = -999.
 meanbias = new((/num_mode,nssites/),float)
@@ -237,8 +172,12 @@ else if (i_mode.eq.1) then
   modeldir = modeldir_emis
   print ("MODE = ch4emis20")
 else if (i_mode.eq.2) then
+  modeldir = modeldir_emis30
+  print ("MODE = ch4emis30")
+else if (i_mode.eq.3) then
   modeldir = modeldir_emis40
-  print ("MODE = ch4emis40")
+    print ("MODE = ch4emis40")
+end if
 end if
 end if
 end if
@@ -345,97 +284,68 @@ correlation(i_mode,:) = escorc(modconcatsite(station|:,time|:),climoconc(station
 ;printVarSummary( plotvar(i_mode,:,:))
 ;printVarSummary (modconcatsite)
 
-plotvar(i_mode,:,:) = modconcatsite
 end do ;;i_mode 
+plotvar_bias = meanbias
+plotvar_corr = correlation
 
-; Plot Obs-Model comparisons  - Seasonal cycle at individual sites (ssites)
+
+; Plot Obs-Model comparisons  
 ;****************************
-plot_type = "x11"
-plot_name = "plot_TS_gmd_climo_panel_"+xsp
+plot_type = "pdf"
+plot_name = "plot_TS_gmd_climo_corr_"+xsp
 wks = gsn_open_wks(plot_type,plot_name)
-plotvar(i_mode,:,:) = climoconc
 
-;print(plotvar)
-;print(modconcatsite)
-plot = new(nssites,"graphic")
-imons = ispan(0,11,1)
-mons = (/"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"/)
-nmons = dimsizes(mons)
+    res                       = True
 
-; Settings for counter
-txres               = True                     ; text mods desired
-txres@txFontHeightF = 0.017                     ; font smaller. default big
-txres@txJust = "CenterLeft"
-txres@txFontColor = "blue"
+    res@gsnMaximize           = True   ; maximize size of plot in window
+;    res@gsnDraw               = False  ; turn off draw
+    res@gsnFrame              = False  ; turn off page advance
+    res@vpWidthF    = 0.44
+    res@vpHeightF   = 0.25
+    res@gsnPaperOrientation = "landscape"
+    res@tiMainString = "Correlation Coefficient CH4(GMD) , climo 1996-2005"
 
-do st = 0, nssites - 2   
-  if (xsp .eq. "co") then
-    res@trYMinF = 0.0
-    posn = 35
-    yposn = (/10,10,10,10,10,10,10,10,10,10,10,10/)
-  else if (run_mode.eq."conc") 
-    posn = 1650
-    res@trYMinF = 1300.
-    yposn_conc = (/1310,1310,1310,1310,1310,1310,1310,1310,1310,1310,1310,1310/)
-  else 
-    posn = 1350
-    yval = new(12,integer)
-    yval = 1400
-    res@trYMinF = yval
-    yposn = new (12,integer)
-    yposn = yval+10
-    yposn_conc = new (12,integer)
-    yposn_conc = yval+60
-    yposn_emis = new (12,integer)
-    yposn_emis = yval+110
-    yposn_emis40 = new(12,integer)
-    yposn_emis40 = yval+160
+;;---Y Axis
+;    res@trYMinF = -1000
+;    res@trYMaxF = 1000
+    res@tiYAxisString = "Correlation Coefficient"
+;    res@tiYAxisString = "Correlation Coefficient"
+    res@tiYAxisFontHeightF = 0.01
+    res@tmYLLabelFontHeightF = 0.01
 
-  end if 
-  end if
-;  res@trYMaxF = max(plotvar(:,st,:))+20.0
-  res@trYMaxF = 2100 
-  txres@txFontColor = "darkorange1"
-  res@gsnCenterString = stationstring(site_indices(st))
-  plot(st) = gsn_csm_xy(wks,imons,plotvar(:,st,:), res)
+;;--- X Axis 
+    res@tiXAxisString = "Lat"
+    res@tiXAxisFontHeightF = 0.01
+    res@tmXBLabelFontHeightF = 0.01
+;;---Markers formant
+    res@xyMarkLineMode   = "Markers"               ; choose which have markers
+    res@xyMarkers         =  (/7,6,15,9/)                      ; choose type of marker  
+    res@xyMarkerColors    = (/"red","chartreuse4","orange2","blue"/)   ; Marker color
+    res@xyMarkerSizeF     = (/0.008,0.008,0.008,0.008/)                     ; Marker size (default 0.01)
+    res@xyMarkerThicknessF = (/3,3,3,3/)
+    ;res@xyLineColors      = (/"red","green","black"/)
+    ;res@xyDashPattern     = 0.
+    ;res@xyLineThicknessF  = (/3,3,3/)
 
-  cttext = gsn_add_text(wks,plot(st),sprinti("%2.0i",datacounter(st,:)),imons,yposn,txres)
+    plot = gsn_csm_xy(wks,stationlat(site_indices),plotvar_corr,res)
 
-  txres@txFontColor = "red"
-  stats_conc = "Mean bias (conc)="+sprintf("%4.1f",meanbias(0,st))+"ppb, r="+sprintf("%4.2f",correlation(0,st))
-  stattext = gsn_add_text(wks,plot(st),stats_conc,0.5,yposn_conc,txres)
+;;---Create legend
+    lgres                    = True
+    lgres@vpWidthF           = 0.2                   ; width of legend (NDC)
+    lgres@vpHeightF          = 0.08                   ; height of legend (NDC)
+    lgres@lgPerimOn          = False                 ; turn off perimeter
+    lgres@lgMarkerIndexes    = (/7,6,9,16/)              ; dash indexes
+    lgres@lgItemType         = "Markers"
+    lgres@lgMarkerColors     = (/"red","chartreuse4","orange","blue"/)          ; colors for legend lines
+    lgres@lgLineColors       = (/"red","chartreuse4","orange","blue"/)
+    lgres@lgDashIndexes      = (/0., 0.,0./)
+    lgres@lgOrientation      = "Vertical"
+    lgres@lgLabelsOn         = "True"
+    lgres@lgAutoManage       = True
+    lgres@lgLabelFontHeightF = 0.01
 
-  txres@txFontColor = "chartreuse3"
-  stats_emis = "Mean bias(emis20)="+sprintf("%4.1f",meanbias(1,st))+"ppb, r="+sprintf("%4.2f",correlation(1,st))
-  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis,txres)
-
-  txres@txFontColor = "blue"
-  stats_emis = "Mean bias(emis40)="+sprintf("%4.1f",meanbias(2,st))+"ppb, r="+sprintf("%4.2f",correlation(2,st))
-  stattext = gsn_add_text(wks,plot(st),stats_emis,0.5,yposn_emis40,txres)
-
-
-
-
-end do
-
-rpanel@txString = "1986-2005 Climo GMD vs. "+experiment
-
-; Plot all pages
-begx = 0
-do f = 0, nssites/8 - 1
- endx = begx+7
- gsn_panel(wks,plot(begx:endx),(/4,2/),rpanel) 
- gsn_legend_ndc(wks,num_mode+1,(/"conc","emis","GMD"/),0.2,0.03,lgres)
- gsn_text_ndc(wks,"# of years in climatology",0.5,0.01,amres) 
- frame(wks)
- begx = endx+1
-end do 
-gsn_panel(wks,plot(endx+1:nssites-1),(/4,2/),rpanel)
-gsn_legend_ndc(wks,num_mode+1,(/"conc","emis","GMD"/),0.2,0.03,lgres)
-gsn_text_ndc(wks,"number of years in obs climatology",0.5,0.01,amres) 
-frame(wks)
-
-end do
+    gsn_legend_ndc(wks,4,(/"conc","emis20%","emis30%","emis40%"/),0.5,0.18,lgres)
+    frame(wks)
 
 ;***
 end

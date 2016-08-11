@@ -1,10 +1,14 @@
 
+;_________________________________________________________________________
 ;purpose: 
-;   Plot Height(Y-Axis) vs. CH4 conc obsereved by flight 
+;   Height (Y-Axis) vs. Latitude (X-Axis). plot flight tracjectory,
+;   illustrates latitude of measurement
+;   Contour plot, obs avg over alt bins (1km) and lat bins (.5 deg)
+;   , colored by obs CH4 concentration
 ;   Flight data must be in NetCDF format
 ;
 ; Modification History
-;      Created on June-2016, MAO
+;      Created on July-2016, MAO
 ;_________________________________________________________________________
 
 
@@ -21,8 +25,16 @@ begin
 ;    mission_name = "CALIFORNIA-2013"
 ;    mission_name = "BALTIMORE-2011"
 ;    mission_name = "SEAC4RS-2013"
-    mission_name = "HIPPO"
-    h_year = "2009"
+;    mission_name = "HIPPO"
+    mission_name = "ARCTAS"
+    ARCTAS_miss = "20080401_R14_thru20080419"
+;    ARCTAS_miss = "20080618_R14_thru20080626"
+;    ARCTAS_miss = "20080629_R14_thru20080713"
+
+
+
+    h_year = ""
+;    data_dir    = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/DISCOVERAQ/"+mission_name+"/"
     data_dir    = "/Users/mabdioskouei/GFDL_METHANE/obs_data/Flight_Data/"+mission_name+"/"
     var_name    = "CH4_MixingRatio"
 ;    var_name = "Methane_mixing_ratio"i
@@ -30,7 +42,9 @@ begin
 
 
 ;;---Read Flight data 
-    fils = systemfunc("ls "+data_dir+"*2009.nc")
+;    fils = systemfunc("ls "+data_dir+"*.nc")
+    fils = systemfunc("ls "+data_dir+"/ARCTAS-mrg60-dc8_merge_"+ARCTAS_miss+".convert.nc")
+
     flight_file = addfile(fils, "r")   
     time_unit = flight_file->time
     flight_time  = flight_file->UTC ;; time_unit is the unit
@@ -90,7 +104,7 @@ printVarSummary(flight_var)
 ;print (lat_bin)
     do  i_lat_bin=0,num_lat_bins-1
         do i_bin = 0,num_bins-1
-            indind := ind(flight_lat_int.lt.lat_bin(i_lat_bin).and.alt_ind.eq.bin_val(i_bin))
+            indind := ind(flight_lat_int.eq.lat_bin(i_lat_bin).and.alt_ind.eq.bin_val(i_bin))
     ;        print ("LAT,ALT ="+lat_bin(i_lat_bin)+","+i_bin+" ind ="+ indind)
             if (all(ismissing(indind)))then 
                 bin_var(i_bin,i_lat_bin) = -9999999
@@ -110,7 +124,9 @@ printVarSummary(flight_var)
 ;; Plotting
 ;;---------------------------------------------
     plot_type = "pdf"
-    plot_name = "Flight_track_zonal"+mission_name+"-"+h_year+"_cross_contour"
+;    plot_name = "Flight_track_zonal"+mission_name+"-"+h_year+"_cross_contour"
+    plot_name  = "Flight_track_zonal"+mission_name+"_"+ARCTAS_miss
+
     wks = gsn_open_wks(plot_type,plot_name)
     colormap = "MPL_jet"
     gsn_define_colormap (wks,colormap)
@@ -121,9 +137,17 @@ printVarSummary(flight_var)
 ;----------------------------------------------------------------------
     res                       = True
     res@gsnMaximize = True
+    res@lbOrientation = "Vertical"
+
+    res@gsnDraw = False
+    res@gsnFrame = False
+
     res@cnFillOn = True
     res@cnLinesOn = False
-    res@tiMainString = mission_name+"_"+h_year
+;    res@tiMainString = mission_name+"_"+h_year
+    
+    res@tiMainString = mission_name+"_"+ARCTAS_miss
+ 
     res@tiMainFontHeightF = 0.02
 
 ;;---Contour settings
@@ -141,16 +165,40 @@ printVarSummary(flight_var)
     res@tmYLLabelFontHeightF = 0.02
     res@trYMinF = 0
     res@trYMaxF = 15
- 
+
+    res@trXMinF = -90
+    res@trXMaxF = 90
+
     res@tiXAxisString = "Lat"
     res@tiXAxisFontHeightF = 0.02  
     res@tmXBLabelFontHeightF = 0.02
-
-
-
     plot = gsn_csm_contour (wks,bin_var,res)
     
+;----------------------------------------------------------------------
+; Create flight track to overlay
+;----------------------------------------------------------------------
+;    xyres                       = True
+
+
+;    res@gsnMaximize           = True   ; maximize size of plot in window
+;    xyres@gsnDraw               = False  ; turn off draw
+;    xyres@gsnFrame              = False  ; turn off page advance
     
+;    xyres@xyMarkLineMode  = "Markers"
+;    xyres@xyMarker = 1
+;    xyres@xyMarkerSizeF = .01
+;    res@trYMinF     = 0
+
+;    res@tiMainFontHeightF = 0.02
+;    res@gsnStringFontHeightF = 0.02
+;    res@tiMainString         = mission_name+" 2009"
+;    xyres@xyMarkerColors  = "black"
+
+;    plot_xy = gsn_csm_xy(wks,flight_lat,flight_alt,xyres)
+
+;    overlay(plot,plot_xy)
+    draw(plot)
+    frame(wks)
+
     
-    ;frame(wks)
 end ;;begin

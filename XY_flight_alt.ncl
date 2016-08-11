@@ -1,6 +1,8 @@
 
 ;purpose: 
-;   Plot Height(Y-Axis) vs. CH4 conc obsereved by flight 
+;   Plot Height(Y-Axis) vs. CH4 conc obsereved by flight
+;   Each dot represent avg obs CH4 conc over binned alt (1km)
+;   Also plots error bars
 ;   Flight data must be in NetCDF format
 ;
 ; Modification History
